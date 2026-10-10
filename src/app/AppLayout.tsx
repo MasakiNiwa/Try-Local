@@ -57,7 +57,7 @@ function BottomNav() {
       aria-label="メイン"
       className="pb-safe shrink-0 border-t border-slate-200 bg-white/90 backdrop-blur-md md:hidden dark:border-slate-800 dark:bg-slate-900/90"
     >
-      <div className="grid grid-cols-4">
+      <div className="grid grid-cols-5">
         {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
           const isActive = location === to;
           return (

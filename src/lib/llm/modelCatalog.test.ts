@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { findCatalogModel, isBrowserCompatibleName, isGpuOnlyModel } from './modelCatalog';
+import {
+  findCatalogModel,
+  isBrowserCompatibleName,
+  isEmbeddingModelName,
+  isGpuOnlyModel,
+} from './modelCatalog';
 
 describe('modelCatalog', () => {
   it('Web 版と動作確認済みモデルをブラウザ対応とみなす', () => {
@@ -20,5 +25,11 @@ describe('modelCatalog', () => {
   it('ファイル名からカタログを引ける', () => {
     expect(findCatalogModel('Qwen3-0.6B.litertlm')?.title).toBe('Qwen3 0.6B');
     expect(findCatalogModel('unknown.litertlm')).toBeUndefined();
+  });
+
+  it('埋め込みモデルを判定する', () => {
+    expect(isEmbeddingModelName('embeddinggemma-2-text-vision-440m.litertlm')).toBe(true);
+    expect(isEmbeddingModelName('embeddinggemma-300m.litertlm')).toBe(true);
+    expect(isEmbeddingModelName('gemma-4-E2B-it-web.litertlm')).toBe(false);
   });
 });

@@ -13,7 +13,6 @@ import {
   Backend,
   Engine,
   SamplerType,
-  loadLiteRtLm,
   type Conversation,
   type ConversationConfig,
   type Message,
@@ -22,6 +21,8 @@ import * as Comlink from 'comlink';
 import { fileNameFromUrl, normalizeModelUrl } from './download';
 import { getStoredModelFile, saveModelFile, saveModelStream } from './modelStorage';
 import { userMessageSuffix } from './modelQuirks';
+import { countingStream, ensureRuntime } from './runtime';
+import { embedderApi } from './embedder';
 import type {
   BackendKind,
   ChatTurn,
@@ -36,15 +37,12 @@ import type {
   LoadedModelInfo,
 } from './types';
 
-declare const self: DedicatedWorkerGlobalScope & { Module?: unknown };
-
 const BACKEND_MAP: Record<BackendKind, number> = {
   'gpu-artisan': Backend.GPU_ARTISAN,
   gpu: Backend.GPU,
   cpu: Backend.CPU,
 };
 
-let runtimePromise: Promise<unknown> | null = null;
 let engine: Engine | null = null;
 let modelInfo: LoadedModelInfo | null = null;
 
@@ -54,44 +52,6 @@ let conversationTurnIds: string[] | null = null;
 let conversationSettingsKey = '';
 let cancelRequested = false;
 let downloadAbort: AbortController | null = null;
-
-function ensureRuntime(wasmBaseUrl: string): Promise<unknown> {
-  if (!runtimePromise) {
-    const base = wasmBaseUrl.endsWith('/') ? wasmBaseUrl : `${wasmBaseUrl}/`;
-    // Worker 内では Emscripten が自分の URL を基準に .wasm を探してしまうため、明示的に指定する
-    self.Module = { locateFile: (file: string) => base + file };
-    runtimePromise = loadLiteRtLm(base).catch((e) => {
-      runtimePromise = null;
-      throw e;
-    });
-  }
-  return runtimePromise;
-}
-
-/** バイト数を数えつつ一定間隔で進捗を通知するストリームを作る */
-function countingStream(
-  source: ReadableStream<Uint8Array>,
-  onBytes: (loaded: number) => void,
-): ReadableStream<Uint8Array> {
-  let loaded = 0;
-  let lastReport = 0;
-  return source.pipeThrough(
-    new TransformStream<Uint8Array, Uint8Array>({
-      transform(chunk, controller) {
-        loaded += chunk.byteLength;
-        const now = performance.now();
-        if (now - lastReport > 80) {
-          lastReport = now;
-          onBytes(loaded);
-        }
-        controller.enqueue(chunk);
-      },
-      flush() {
-        onBytes(loaded);
-      },
-    }),
-  );
-}
 
 async function disposeConversation(): Promise<void> {
   const conv = conversation;
@@ -374,6 +334,8 @@ const api = {
   },
 };
 
-export type EngineWorkerApi = typeof api;
+const workerApi = { ...api, ...embedderApi };
 
-Comlink.expose(api);
+export type EngineWorkerApi = typeof workerApi;
+
+Comlink.expose(workerApi);

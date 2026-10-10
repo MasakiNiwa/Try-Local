@@ -7,18 +7,42 @@ import { deleteStoredModel } from '@/lib/llm/modelStorage';
 import { cn } from '@/lib/utils/cn';
 import { errorMessage, formatBytes } from '@/lib/utils/format';
 import { useEngine } from '@/features/engine/engineStore';
-import { isBrowserCompatibleName } from '@/lib/llm/modelCatalog';
+import {
+  isBrowserCompatibleName,
+  isEmbeddingModelName,
+  type ModelKind,
+} from '@/lib/llm/modelCatalog';
+import { useEmbed } from '@/features/embed/embedStore';
 import { useSettings } from '@/features/settings/settingsStore';
 
-/** OPFS に保存済みのモデル一覧 */
-export function StoredModelList({ compact }: { compact?: boolean }) {
-  const models = useEngine((s) => s.storedModels);
+interface StoredModelListProps {
+  compact?: boolean;
+  /** chat: チャット用モデル、embedding: 埋め込みモデル（画像ページ） */
+  kind?: ModelKind;
+}
+
+/** OPFS に保存済みのモデル一覧（種類ごとに表示し、それぞれのエンジンで読み込む） */
+export function StoredModelList({ compact, kind = 'chat' }: StoredModelListProps) {
+  const allModels = useEngine((s) => s.storedModels);
   const refresh = useEngine((s) => s.refreshStoredModels);
-  const load = useEngine((s) => s.load);
-  const unload = useEngine((s) => s.unload);
-  const status = useEngine((s) => s.status);
-  const current = useEngine((s) => s.model?.name);
-  const lastModelName = useSettings((s) => s.lastModelName);
+  // 進捗などで頻繁に変わる値は購読しない（一覧の再描画を最小限にする）
+  const chatStatus = useEngine((s) => s.status);
+  const chatCurrent = useEngine((s) => s.model?.name);
+  const loadChat = useEngine((s) => s.load);
+  const unloadChat = useEngine((s) => s.unload);
+  const embedStatus = useEmbed((s) => s.status);
+  const embedCurrent = useEmbed((s) => s.info?.name);
+  const loadEmbed = useEmbed((s) => s.load);
+  const unloadEmbed = useEmbed((s) => s.unload);
+  const isEmbedding = kind === 'embedding';
+  const models = allModels.filter((m) => isEmbeddingModelName(m.name) === isEmbedding);
+  const status = isEmbedding ? embedStatus : chatStatus;
+  const current = isEmbedding ? embedCurrent : chatCurrent;
+  const load = (name: string) =>
+    isEmbedding ? loadEmbed({ kind: 'stored', name }) : loadChat({ kind: 'stored', name });
+  const unload = isEmbedding ? unloadEmbed : unloadChat;
+  const lastKey = isEmbedding ? 'lastEmbedModelName' : 'lastModelName';
+  const lastModelName = useSettings((s) => s[lastKey]);
   const updateSettings = useSettings((s) => s.update);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -32,7 +56,7 @@ export function StoredModelList({ compact }: { compact?: boolean }) {
     try {
       if (current === name) await unload();
       await deleteStoredModel(name);
-      if (lastModelName === name) updateSettings({ lastModelName: null });
+      if (lastModelName === name) updateSettings({ [lastKey]: null });
       toast.success(`${name} を削除しました`);
     } catch (e) {
       toast.error('削除に失敗しました', { description: errorMessage(e) });
@@ -70,7 +94,7 @@ export function StoredModelList({ compact }: { compact?: boolean }) {
                   {active && (
                     <span className="ml-2 text-accent-600 dark:text-accent-400">使用中</span>
                   )}
-                  {!isBrowserCompatibleName(m.name) && (
+                  {!isEmbedding && !isBrowserCompatibleName(m.name) && (
                     <span className="ml-2 text-amber-600 dark:text-amber-400">
                       ブラウザ未対応の可能性
                     </span>
@@ -82,7 +106,7 @@ export function StoredModelList({ compact }: { compact?: boolean }) {
                   size="sm"
                   variant="primary"
                   disabled={status === 'loading'}
-                  onClick={() => void load({ kind: 'stored', name: m.name })}
+                  onClick={() => void load(m.name)}
                 >
                   <Play />
                   読み込む

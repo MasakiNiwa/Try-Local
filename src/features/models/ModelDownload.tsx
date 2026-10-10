@@ -13,6 +13,7 @@ import {
   huggingFacePageUrl,
   MODEL_CATALOG,
   type CatalogModel,
+  type ModelKind,
 } from '@/lib/llm/modelCatalog';
 
 function Badge({ children, tone }: { children: string; tone: 'ok' | 'warn' | 'muted' }) {
@@ -129,7 +130,7 @@ function DownloadProgressCard() {
 }
 
 /** Hugging Face などの URL からモデルを直接ダウンロードして OPFS に保存する */
-export function ModelDownload() {
+export function ModelDownload({ kind = 'chat' }: { kind?: ModelKind }) {
   const downloading = useEngine((s) => s.download !== null);
   const downloadModel = useEngine((s) => s.downloadModel);
   const webgpu = useEngine((s) => s.webgpu);
@@ -145,12 +146,14 @@ export function ModelDownload() {
       icon={<Download />}
       description={
         opfs
-          ? 'Hugging Face から直接ダウンロードしてブラウザ内に保存します（サイズが大きいので Wi-Fi 推奨）'
+          ? kind === 'embedding'
+            ? 'Hugging Face から直接ダウンロードしてブラウザ内に保存します'
+            : 'Hugging Face から直接ダウンロードしてブラウザ内に保存します（サイズが大きいので Wi-Fi 推奨）'
           : 'このブラウザは OPFS に対応していないため、直接ダウンロードは使えません。ファイルを取り込んでください。'
       }
     >
       <DownloadProgressCard />
-      {MODEL_CATALOG.map((m) => (
+      {MODEL_CATALOG.filter((m) => m.kind === kind).map((m) => (
         <CatalogRow
           key={m.file}
           model={m}
