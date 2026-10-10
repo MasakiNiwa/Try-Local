@@ -2,7 +2,9 @@ import { toast } from 'sonner';
 import { create } from 'zustand';
 import { llm } from '@/lib/llm/client';
 import { listStoredModels } from '@/lib/llm/modelStorage';
+import { detectCapabilities } from '@/lib/env/capabilities';
 import type {
+  BackendKind,
   DownloadProgress,
   LoadProgress,
   LoadedModelInfo,
@@ -11,6 +13,9 @@ import type {
 } from '@/lib/llm/types';
 import { errorMessage } from '@/lib/utils/format';
 import { useSettings } from '@/features/settings/settingsStore';
+import { isWebGpuError, resolveBackend } from './backend';
+
+export { resolveBackend } from './backend';
 
 export type EngineStatus = 'empty' | 'loading' | 'ready' | 'error';
 
@@ -24,9 +29,13 @@ interface EngineState {
   storedModels: StoredModel[];
   /** ダウンロード中の進捗（null: ダウンロードしていない） */
   download: DownloadProgress | null;
+  /** WebGPU が使えるか（null: 未判定） */
+  webgpu: boolean | null;
 
   refreshStoredModels: () => Promise<void>;
-  load: (source: ModelSource) => Promise<boolean>;
+  detectWebGpu: () => Promise<boolean>;
+  /** backend を指定すると設定より優先する */
+  load: (source: ModelSource, backend?: BackendKind) => Promise<boolean>;
   unload: () => Promise<void>;
   downloadModel: (url: string) => Promise<void>;
   cancelDownload: () => void;
@@ -40,6 +49,13 @@ export const useEngine = create<EngineState>()((set, get) => ({
   error: null,
   storedModels: [],
   download: null,
+  webgpu: null,
+
+  async detectWebGpu() {
+    const { webgpu } = await detectCapabilities();
+    set({ webgpu });
+    return webgpu;
+  },
 
   async refreshStoredModels() {
     try {
@@ -49,17 +65,19 @@ export const useEngine = create<EngineState>()((set, get) => ({
     }
   },
 
-  async load(source) {
+  async load(source, backendOverride) {
     if (get().status === 'loading') return false;
     const settings = useSettings.getState();
     const name = source.kind === 'file' ? source.file.name : source.name;
+    const webgpu = get().webgpu ?? (await get().detectWebGpu());
+    const backend = backendOverride ?? resolveBackend(settings.backend, webgpu);
     set({ status: 'loading', loadingName: name, error: null, progress: null, model: null });
     // 進捗通知は高頻度で届くので 1 フレームに 1 回だけ反映する
     let pending: LoadProgress | null = null;
     let raf = 0;
     try {
       const info = await llm.loadModel(
-        { source, backend: settings.backend, maxNumTokens: settings.maxNumTokens },
+        { source, backend, maxNumTokens: settings.maxNumTokens },
         (p) => {
           pending = p;
           if (!raf) {
@@ -77,14 +95,26 @@ export const useEngine = create<EngineState>()((set, get) => ({
         toast.warning('モデルのブラウザ保存に失敗しました', { description: info.saveError });
       }
       if (info.saved) void get().refreshStoredModels();
-      toast.success(`${info.name} を読み込みました`);
+      toast.success(`${info.name} を読み込みました`, {
+        description: backend === 'cpu' ? 'CPU で実行します（GPU より遅くなります）' : undefined,
+      });
       return true;
     } catch (e) {
       cancelAnimationFrame(raf);
       const message = errorMessage(e);
       console.error(e);
       set({ status: 'error', error: message, progress: null, loadingName: null });
-      toast.error('モデルの読み込みに失敗しました', { description: message });
+      // GPU が原因なら CPU での再試行を提案する（取り込んだファイルはそのまま再利用できる）
+      toast.error('モデルの読み込みに失敗しました', {
+        description: isWebGpuError(message)
+          ? `${message}\nこの端末では WebGPU が使えないようです。CPU で読み込めます。`
+          : message,
+        duration: isWebGpuError(message) ? 15000 : undefined,
+        action:
+          backend !== 'cpu' && isWebGpuError(message)
+            ? { label: 'CPU で再試行', onClick: () => void get().load(source, 'cpu') }
+            : undefined,
+      });
       // Wasm / GPU が壊れた状態の可能性があるので Worker を作り直す（ダウンロード中は除く）
       if (!get().download) llm.terminate();
       return false;

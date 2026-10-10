@@ -3,7 +3,8 @@ import { PageBody, PageHeader } from '@/app/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { formatBytes, formatDuration } from '@/lib/utils/format';
-import { useEngine } from '@/features/engine/engineStore';
+import { resolveBackend, useEngine } from '@/features/engine/engineStore';
+import { WebGpuNotice } from '@/features/engine/WebGpuNotice';
 import { LoadProgressCard } from '@/features/models/LoadProgressCard';
 import { ModelImport } from '@/features/models/ModelImport';
 import { ModelDownload } from '@/features/models/ModelDownload';
@@ -16,7 +17,9 @@ function CurrentModel() {
   const model = useEngine((s) => s.model);
   const error = useEngine((s) => s.error);
   const unload = useEngine((s) => s.unload);
-  const backend = useSettings((s) => s.backend);
+  const backendSetting = useSettings((s) => s.backend);
+  const webgpu = useEngine((s) => s.webgpu);
+  const backend = resolveBackend(backendSetting, webgpu);
   const maxNumTokens = useSettings((s) => s.maxNumTokens);
 
   if (status === 'error') {
@@ -24,9 +27,6 @@ function CurrentModel() {
       <Card className="border-rose-200 p-4 text-sm text-rose-700 dark:border-rose-900 dark:text-rose-300">
         <p className="font-medium">読み込みに失敗しました</p>
         <p className="mt-1 break-all">{error}</p>
-        <p className="mt-2 text-slate-600 dark:text-slate-400">
-          WebGPU 非対応の環境では「設定 → バックエンド」を CPU にすると動く場合があります。
-        </p>
       </Card>
     );
   }
@@ -71,6 +71,7 @@ export default function ModelsPage() {
     <>
       <PageHeader title="モデル" />
       <PageBody>
+        <WebGpuNotice />
         <CurrentModel />
         <LoadProgressCard />
         <StoredModelList />

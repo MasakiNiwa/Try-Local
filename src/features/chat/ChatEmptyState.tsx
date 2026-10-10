@@ -1,6 +1,7 @@
 import { Sparkles } from 'lucide-react';
 import { Link } from 'wouter';
 import { useEngine } from '@/features/engine/engineStore';
+import { WebGpuNotice } from '@/features/engine/WebGpuNotice';
 import { LoadProgressCard } from '@/features/models/LoadProgressCard';
 import { ModelImport } from '@/features/models/ModelImport';
 import { StoredModelList } from '@/features/models/StoredModelList';
@@ -57,6 +58,7 @@ export function ChatEmptyState() {
             </Link>
           </p>
         </div>
+        <WebGpuNotice />
         <LoadProgressCard />
         {status !== 'loading' && (
           <>

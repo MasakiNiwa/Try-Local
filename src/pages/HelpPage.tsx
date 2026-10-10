@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { BookOpen, Code2, ExternalLink, Info, MonitorCheck, Scale } from 'lucide-react';
+import { BookOpen, Code2, Cpu, ExternalLink, Info, MonitorCheck, Scale } from 'lucide-react';
 import { PageBody, PageHeader } from '@/app/PageHeader';
 import { Section } from '@/components/ui/Card';
 import { LITERTLM_DOCS_URL, LITERTLM_URL, REPOSITORY_URL } from '@/lib/constants';
@@ -96,6 +96,42 @@ export default function HelpPage() {
           description="このブラウザの対応状況"
         >
           <CapabilityCheck />
+        </Section>
+
+        <Section
+          title="WebGPU が使えないとき"
+          icon={<Cpu />}
+          description="「No GPU adapter found」などのエラーが出る場合"
+        >
+          <Body>
+            <p>
+              設定のバックエンドが「自動」なら、WebGPU が使えない端末では{' '}
+              <strong>CPU（WebAssembly）</strong>
+              で実行します。GPU
+              より遅く、モデル全体をメモリに読み込むため空きメモリが多めに必要です。 GPU
+              で動かしたい場合は、次の点を確認してください。
+            </p>
+            <ul className="list-disc space-y-1.5 pl-5 text-slate-600 dark:text-slate-400">
+              <li>Chrome / Edge を最新版に更新する（Android は Android 12 以降）</li>
+              <li>
+                アドレスバーに <code className="font-mono text-xs">chrome://gpu</code>{' '}
+                と入力し、「WebGPU」の状態を確認する
+              </li>
+              <li>
+                PC では <code className="font-mono text-xs">chrome://settings/system</code>
+                の「グラフィック アクセラレーションが使用可能な場合は使用する」をオンにする
+              </li>
+              <li>
+                Android の「高度な保護機能（Advanced Protection）」など、セキュリティ機能によって
+                WebGPU や JavaScript の最適化が制限される場合がある
+              </li>
+              <li>
+                GPU がブラウザの非対応リストに入っている端末では、
+                <code className="font-mono text-xs">chrome://flags/#enable-unsafe-webgpu</code>
+                を有効にすると使えることがある（実験的な機能のため自己責任で）
+              </li>
+            </ul>
+          </Body>
         </Section>
 
         <Section title="ソースコード" icon={<Code2 />}>

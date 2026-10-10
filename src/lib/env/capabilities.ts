@@ -12,6 +12,7 @@ export interface CapabilityReport {
   subgroups: boolean;
   maxBufferSize?: number;
   maxStorageBufferBindingSize?: number;
+  wasm: boolean;
   jspi: boolean;
   opfs: boolean;
   hardwareConcurrency?: number;
@@ -33,6 +34,7 @@ async function detect(): Promise<CapabilityReport> {
     webgpu: false,
     shaderF16: false,
     subgroups: false,
+    wasm: typeof WebAssembly === 'object' && typeof WebAssembly.instantiate === 'function',
     jspi: typeof WebAssembly !== 'undefined' && 'Suspending' in WebAssembly,
     opfs: !!navigator.storage?.getDirectory,
     hardwareConcurrency: navigator.hardwareConcurrency,

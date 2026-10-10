@@ -59,6 +59,11 @@ export function CapabilityCheck() {
         <Row label="GPU 最大バッファ" value={formatBytes(r.maxBufferSize)} />
       )}
       <Row
+        label="WebAssembly"
+        level={r.wasm ? 'ok' : 'ng'}
+        value={r.wasm ? '対応（CPU 実行に必要）' : '利用不可'}
+      />
+      <Row
         label="WebAssembly JSPI"
         level={r.jspi ? 'ok' : 'warn'}
         value={r.jspi ? '対応（高速版）' : '非対応（互換版）'}
