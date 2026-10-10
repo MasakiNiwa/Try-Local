@@ -18,6 +18,7 @@ Try Local は以下のオープンソースソフトウェアを利用してい�
 | **react** | 19.3.0 | MIT | https://github.com/react/react |
 | **react-dom** | 19.3.0 | MIT | https://github.com/react/react |
 | **react-markdown** | 10.1.0 | MIT | https://github.com/remarkjs/react-markdown |
+| **remark-cjk-friendly** | 2.3.2 | MIT | https://github.com/tats-u/markdown-cjk-friendly |
 | **remark-gfm** | 4.0.1 | MIT | https://github.com/remarkjs/remark-gfm |
 | **sonner** | 2.0.8 | MIT | https://github.com/emilkowalski/sonner |
 | **tailwind-merge** | 3.7.0 | MIT | https://github.com/dcastil/tailwind-merge |
@@ -49,6 +50,7 @@ Try Local は以下のオープンソースソフトウェアを利用してい�
 | escape-string-regexp | 5.0.0 | MIT | https://github.com/sindresorhus/escape-string-regexp |
 | estree-util-is-identifier-name | 3.0.0 | MIT | https://github.com/syntax-tree/estree-util-is-identifier-name |
 | extend | 3.0.2 | MIT | https://github.com/justmoon/node-extend |
+| get-east-asian-width | 1.7.0 | MIT | https://github.com/sindresorhus/get-east-asian-width |
 | hast-util-is-element | 3.0.0 | MIT | https://github.com/syntax-tree/hast-util-is-element |
 | hast-util-to-jsx-runtime | 2.3.6 | MIT | https://github.com/syntax-tree/hast-util-to-jsx-runtime |
 | hast-util-whitespace | 3.0.0 | MIT | https://github.com/syntax-tree/hast-util-whitespace |
@@ -77,9 +79,12 @@ Try Local は以下のオープンソースソフトウェアを利用してい�
 | mdast-util-phrasing | 4.1.0 | MIT | https://github.com/syntax-tree/mdast-util-phrasing |
 | mdast-util-to-hast | 13.2.1 | MIT | https://github.com/syntax-tree/mdast-util-to-hast |
 | mdast-util-to-markdown | 2.2.0 | MIT | https://github.com/syntax-tree/mdast-util-to-markdown |
+| mdast-util-to-markdown-cjk-friendly | 1.0.0 | MIT | https://github.com/tats-u/markdown-cjk-friendly |
 | mdast-util-to-string | 4.0.0 | MIT | https://github.com/syntax-tree/mdast-util-to-string |
 | micromark | 4.0.3 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark |
 | micromark-core-commonmark | 2.0.4 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-core-commonmark |
+| micromark-extension-cjk-friendly | 2.0.2 | MIT | https://github.com/tats-u/markdown-cjk-friendly |
+| micromark-extension-cjk-friendly-util | 3.0.1 | MIT | https://github.com/tats-u/markdown-cjk-friendly |
 | micromark-extension-gfm | 3.0.0 | MIT | https://github.com/micromark/micromark-extension-gfm |
 | micromark-extension-gfm-autolink-literal | 2.1.0 | MIT | https://github.com/micromark/micromark-extension-gfm-autolink-literal |
 | micromark-extension-gfm-footnote | 2.1.0 | MIT | https://github.com/micromark/micromark-extension-gfm-footnote |
