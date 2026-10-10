@@ -57,6 +57,10 @@ export function ModelImport({ compact }: { compact?: boolean }) {
           Hugging Face からダウンロードしたファイルを選択
           <span className="hidden md:inline">、またはここにドロップ</span>
         </p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          ファイル名が <code className="font-mono">-web.litertlm</code> で終わる Web
+          版を選んでください
+        </p>
       </div>
       <Button variant="primary" onClick={() => inputRef.current?.click()} disabled={loading}>
         ファイルを選択

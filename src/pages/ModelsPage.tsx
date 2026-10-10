@@ -26,7 +26,7 @@ function CurrentModel() {
     return (
       <Card className="border-rose-200 p-4 text-sm text-rose-700 dark:border-rose-900 dark:text-rose-300">
         <p className="font-medium">読み込みに失敗しました</p>
-        <p className="mt-1 break-all">{error}</p>
+        <p className="mt-1 break-all whitespace-pre-line">{error}</p>
       </Card>
     );
   }
