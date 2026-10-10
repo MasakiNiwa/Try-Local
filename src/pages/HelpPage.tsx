@@ -27,7 +27,7 @@ function Body({ children }: { children: ReactNode }) {
 const STEPS = [
   {
     title: 'モデルをダウンロード',
-    body: 'Hugging Face の litert-community から Web 版の .litertlm ファイル（例: gemma-4-E2B-it-web.litertlm）を端末に保存します。',
+    body: 'Hugging Face の litert-community から Web 版の .litertlm ファイル（例: gemma-4-E2B-it-web.litertlm）を端末に保存します。同じリポジトリにある「-web」の付かないファイルはスマホ・PC アプリ向けで、ブラウザでは読み込めないことがあります。',
   },
   {
     title: 'モデルを取り込む',

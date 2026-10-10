@@ -13,7 +13,8 @@ import type {
 } from '@/lib/llm/types';
 import { errorMessage } from '@/lib/utils/format';
 import { useSettings } from '@/features/settings/settingsStore';
-import { isWebGpuError, resolveBackend } from './backend';
+import { resolveBackend } from './backend';
+import { classifyLoadError, explainLoadError } from './loadErrors';
 
 export { resolveBackend } from './backend';
 
@@ -103,24 +104,40 @@ export const useEngine = create<EngineState>()((set, get) => ({
       cancelAnimationFrame(raf);
       const message = errorMessage(e);
       console.error(e);
-      set({ status: 'error', error: message, progress: null, loadingName: null });
-      // GPU が原因なら CPU での再試行を提案する（取り込んだファイルはそのまま再利用できる）
-      toast.error('モデルの読み込みに失敗しました', {
-        description: isWebGpuError(message)
-          ? `${message}\nこの端末では WebGPU が使えないようです。CPU で読み込めます。`
-          : message,
-        duration: isWebGpuError(message) ? 15000 : undefined,
-        action:
-          backend !== 'cpu' && isWebGpuError(message)
-            ? { label: 'CPU で再試行', onClick: () => void get().load(source, 'cpu') }
-            : undefined,
+      const kind = classifyLoadError(message);
+      const hint = explainLoadError(kind, name);
+      set({
+        status: 'error',
+        error: hint ? `${message}\n${hint}` : message,
+        progress: null,
+        loadingName: null,
       });
       // Wasm / GPU が壊れた状態の可能性があるので Worker を作り直す（ダウンロード中は除く）
       if (!get().download) llm.terminate();
+
+      // GPU Artisan のストリーミング読み込みが非対応の形式なら、通常の GPU 読み込みで自動的に再試行する
+      if (kind === 'streaming-unsupported' && backend === 'gpu-artisan') {
+        toast.info(
+          'ストリーミング読み込みに非対応の形式のため、通常の GPU 読み込みで再試行します',
+          {
+            description: 'モデル全体をメモリに読み込むため、時間とメモリが多めに必要です',
+          },
+        );
+        return get().load(source, 'gpu');
+      }
+
+      // GPU が原因なら CPU での再試行を提案する（取り込んだファイルはそのまま再利用できる）
+      const offerCpu = backend !== 'cpu' && (kind === 'webgpu' || kind === 'streaming-unsupported');
+      toast.error('モデルの読み込みに失敗しました', {
+        description: hint ? `${message}\n${hint}` : message,
+        duration: offerCpu ? 15000 : undefined,
+        action: offerCpu
+          ? { label: 'CPU で再試行', onClick: () => void get().load(source, 'cpu') }
+          : undefined,
+      });
       return false;
     }
   },
-
   async unload() {
     await llm.unloadModel().catch(() => llm.terminate());
     set({ status: 'empty', model: null, progress: null, error: null });
