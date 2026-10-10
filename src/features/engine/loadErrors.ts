@@ -43,7 +43,9 @@ export function explainLoadError(kind: LoadErrorKind, fileName: string): string 
     case 'invalid-file':
       return `LiteRT-LM のモデルファイルではないか、ファイルが壊れている可能性があります。${webHint}`;
     case 'memory':
-      return 'メモリが不足しています。他のタブやアプリを閉じるか、より小さいモデル・短い文脈長を試してください。';
+      return isWebModelName(fileName)
+        ? 'メモリが不足しています。他のタブやアプリを閉じるか、より小さいモデル・短い文脈長を試してください。'
+        : 'メモリが不足しています。Web 版ではないモデルはファイル全体を一度にメモリへ確保する必要があり、スマホでは容量が足りないことがあります。ファイル名が「-web.litertlm」で終わる Web 版を使ってください（少しずつ読み込むため、この問題は起きません）。';
     default:
       return isWebModelName(fileName) ? undefined : webHint.trim();
   }

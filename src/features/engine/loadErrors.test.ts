@@ -21,5 +21,7 @@ describe('isWebModelName / explainLoadError', () => {
       '-web.litertlm',
     );
     expect(explainLoadError('unknown', 'gemma-4-E2B-it-web.litertlm')).toBeUndefined();
+    expect(explainLoadError('memory', 'gemma-4-E2B-it.litertlm')).toContain('-web.litertlm');
+    expect(explainLoadError('memory', 'gemma-4-E2B-it-web.litertlm')).not.toContain('-web');
   });
 });

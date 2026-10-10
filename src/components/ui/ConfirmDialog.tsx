@@ -38,7 +38,7 @@ export function ConfirmDialog({
         // 背景クリックで閉じる
         if (e.target === e.currentTarget) onClose();
       }}
-      className="m-auto w-[min(92vw,26rem)] rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+      className="m-auto w-[min(92vw,26rem)] rounded-2xl text-left border border-slate-200 bg-white p-0 text-slate-900 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
     >
       <div className="p-5">
         <h2 className="text-lg font-semibold">{title}</h2>
