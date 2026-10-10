@@ -18,38 +18,44 @@ export interface CatalogModel {
   gpuOnly: boolean;
   /** true: @litert-lm/core が公式にサポート */
   official: boolean;
+  /** false: GPU Artisan のストリーミング読み込みに非対応（最初から通常の GPU 読み込みを試す） */
+  streamingLoad: boolean;
 }
 
+/** 表示順 = おすすめ順。公式 Web 版を優先し、Qwen3 は WebGPU が無い端末向けの代替 */
 export const MODEL_CATALOG: CatalogModel[] = [
-  {
-    file: 'Qwen3-0.6B.litertlm',
-    repo: 'litert-community/Qwen3-0.6B',
-    title: 'Qwen3 0.6B',
-    note: '最軽量。WebGPU が無い端末でも CPU で動く。小さいモデルのため回答の質は控えめ',
-    sizeLabel: '約 614 MB',
-    license: 'Apache-2.0',
-    gpuOnly: false,
-    official: false,
-  },
   {
     file: 'gemma-4-E2B-it-web.litertlm',
     repo: 'litert-community/gemma-4-E2B-it-litert-lm',
     title: 'Gemma 4 E2B',
-    note: '公式の Web 版。品質と軽さのバランスが良い',
+    note: 'おすすめ。公式の Web 版で、GPU で実用的な速度と品質',
     sizeLabel: '約 2.0 GB',
     license: 'Gemma',
     gpuOnly: true,
     official: true,
+    streamingLoad: true,
   },
   {
     file: 'gemma-4-E4B-it-web.litertlm',
     repo: 'litert-community/gemma-4-E4B-it-litert-lm',
     title: 'Gemma 4 E4B',
-    note: '公式の Web 版。高品質だがメモリを多く使う',
+    note: '公式の Web 版。より高品質だがメモリを多く使う',
     sizeLabel: '約 3.0 GB',
     license: 'Gemma',
     gpuOnly: true,
     official: true,
+    streamingLoad: true,
+  },
+  {
+    file: 'Qwen3-0.6B.litertlm',
+    repo: 'litert-community/Qwen3-0.6B',
+    title: 'Qwen3 0.6B',
+    note: 'WebGPU が使えない端末向けの代替。CPU で動くが遅く、回答の質も控えめ',
+    sizeLabel: '約 614 MB',
+    license: 'Apache-2.0',
+    gpuOnly: false,
+    official: false,
+    streamingLoad: false,
   },
 ];
 

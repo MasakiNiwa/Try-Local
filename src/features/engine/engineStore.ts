@@ -14,7 +14,7 @@ import type {
 import { errorMessage } from '@/lib/utils/format';
 import { useSettings } from '@/features/settings/settingsStore';
 import { resolveBackend } from './backend';
-import { isGpuOnlyModel } from '@/lib/llm/modelCatalog';
+import { findCatalogModel, isGpuOnlyModel } from '@/lib/llm/modelCatalog';
 import { classifyLoadError, explainLoadError } from './loadErrors';
 
 export { resolveBackend } from './backend';
@@ -83,6 +83,16 @@ export const useEngine = create<EngineState>()((set, get) => ({
         ? hint
         : resolveBackend(settings.backend, webgpu));
     const gpuOnly = isGpuOnlyModel(name);
+
+    // ストリーミング読み込みに非対応と分かっているモデルは、必ず失敗する GPU Artisan を飛ばす
+    if (
+      backend === 'gpu-artisan' &&
+      !backendOverride &&
+      findCatalogModel(name)?.streamingLoad === false
+    ) {
+      set({ fallbackLog: [] });
+      return get().load(source, 'gpu', true);
+    }
 
     // WebGPU 専用モデルを CPU で読み込んでも必ず失敗するので、読み込む前に止める
     if (gpuOnly && backend === 'cpu') {

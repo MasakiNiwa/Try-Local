@@ -1,10 +1,12 @@
 import { memo, useMemo } from 'react';
 import ReactMarkdown, { type Components, type Options } from 'react-markdown';
+import remarkCjkFriendly from 'remark-cjk-friendly';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlightLite from './rehypeHighlightLite';
 import { splitMarkdownBlocks } from './splitBlocks';
 
-const remarkPlugins: Options['remarkPlugins'] = [remarkGfm];
+// remark-cjk-friendly: 「**「強調」**です」のような日本語の括弧と ** の組み合わせでも太字にする
+const remarkPlugins: Options['remarkPlugins'] = [remarkGfm, remarkCjkFriendly];
 // 言語指定のあるコードブロックだけハイライトする（自動判定は重いので行わない）
 const rehypePlugins: Options['rehypePlugins'] = [rehypeHighlightLite];
 

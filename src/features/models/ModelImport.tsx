@@ -66,8 +66,8 @@ export function ModelImport({ compact }: { compact?: boolean }) {
           <span className="hidden md:inline">、またはここにドロップ</span>
         </p>
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          ブラウザ対応のモデル（<code className="font-mono">-web.litertlm</code> や Qwen3 0.6B
-          など）を選んでください
+          公式の Web 版（ファイル名が <code className="font-mono">-web.litertlm</code>{' '}
+          のもの）がおすすめです
         </p>
       </div>
       <Button variant="primary" onClick={() => inputRef.current?.click()} disabled={loading}>
@@ -90,8 +90,8 @@ export function ModelImport({ compact }: { compact?: boolean }) {
               特にスマホではメモリ不足で失敗する可能性が高いです。
             </p>
             <p>
-              「モデルを入手」にある動作確認済みのモデル（Gemma 4 の Web 版、Qwen3
-              0.6B）の利用をおすすめします。続行する場合、動作を確認できるまでブラウザには保存しません。
+              「モデルを入手」にある公式の Web 版（Gemma
+              4）の利用をおすすめします。続行する場合、動作を確認できるまでブラウザには保存しません。
             </p>
           </div>
         }

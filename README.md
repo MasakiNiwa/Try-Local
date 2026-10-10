@@ -21,9 +21,9 @@ Hugging Face からダウンロードした `.litertlm` モデルを取り込ん
 ## 使い方
 
 1. ブラウザで動作が確認されたモデルを用意（アプリの「モデル」画面から直接ダウンロードも可）
-   - [Qwen3-0.6B.litertlm](https://huggingface.co/litert-community/Qwen3-0.6B)（約 614MB・GPU / CPU 両対応・公式サポート外だが動作報告あり）
-   - [gemma-4-E2B-it-web.litertlm](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm)（約 2GB・公式・WebGPU 専用）
+   - [gemma-4-E2B-it-web.litertlm](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm)（約 2GB・公式・WebGPU 専用）← **おすすめ**
    - [gemma-4-E4B-it-web.litertlm](https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm)（約 3GB・公式・WebGPU 専用）
+   - [Qwen3-0.6B.litertlm](https://huggingface.co/litert-community/Qwen3-0.6B)（約 614MB・WebGPU が無い端末向けの代替。CPU で動くが遅い）
 2. 「モデル」画面でファイルを取り込む（または「モデルを入手」から直接ダウンロード）
 3. 「チャット」画面でメッセージを送信
 
