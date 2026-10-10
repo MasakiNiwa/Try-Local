@@ -4,10 +4,16 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import type { Plugin, ResolvedConfig } from 'vite';
 
-/** 配信先ディレクトリ名（アプリの base からの相対パス） */
-export const LITERTLM_WASM_DIR = 'litertlm-wasm';
-
 const require = createRequire(import.meta.url);
+
+/** @litert-lm/core のバージョン */
+export const LITERTLM_VERSION: string = require('@litert-lm/core/package.json').version;
+
+/**
+ * 配信先ディレクトリ（アプリの base からの相対パス）。
+ * バージョンをパスに含めることで、更新時に古いキャッシュと混ざらないようにする。
+ */
+export const LITERTLM_WASM_DIR = `litertlm-wasm/${LITERTLM_VERSION}`;
 
 /** node_modules/@litert-lm/core/wasm の絶対パス */
 function resolveWasmSourceDir(): string {
@@ -19,8 +25,8 @@ function resolveWasmSourceDir(): string {
  * LiteRT-LM の Wasm ランタイム（.js / .wasm）を npm パッケージから
  * 自サイトにセルフホストするためのプラグイン。
  *
- * - dev: `/<base>/litertlm-wasm/*` を node_modules から直接配信
- * - build: `dist/litertlm-wasm/` へコピー
+ * - dev: `/<base>/litertlm-wasm/<version>/*` を node_modules から直接配信
+ * - build: `dist/litertlm-wasm/<version>/` へコピー
  *
  * バージョンは package.json に固定した @litert-lm/core と常に一致する。
  */
