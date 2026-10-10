@@ -73,12 +73,29 @@ function readLicenseTexts(dir, license) {
   return texts;
 }
 
+/**
+ * devDependencies だが成果物に同梱されるもの。
+ * vite-plugin-pwa が生成する Service Worker には Workbox のランタイムが含まれる。
+ */
+const BUNDLED_DEV_PACKAGES = [
+  'workbox-cacheable-response',
+  'workbox-core',
+  'workbox-expiration',
+  'workbox-precaching',
+  'workbox-routing',
+  'workbox-strategies',
+  'workbox-window',
+];
+
 const rootPkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
 const seen = new Map();
-const queue = Object.keys(rootPkg.dependencies ?? {}).map((name) => ({ name, from: root }));
+const queue = [
+  ...Object.keys(rootPkg.dependencies ?? {}).map((name) => ({ name, from: root, direct: true })),
+  ...BUNDLED_DEV_PACKAGES.map((name) => ({ name, from: root, direct: false })),
+];
 
 while (queue.length > 0) {
-  const { name, from } = queue.shift();
+  const { name, from, direct = false } = queue.shift();
   const dir = findPackageDir(name, from);
   if (!dir) {
     // optional な依存などで未インストールのものはスキップ
@@ -94,7 +111,7 @@ while (queue.length > 0) {
     license,
     repository: normalizeRepo(pkg.repository) ?? pkg.homepage,
     author: typeof pkg.author === 'string' ? pkg.author : pkg.author?.name,
-    direct: from === root,
+    direct,
     texts: readLicenseTexts(dir, license),
   });
   for (const dep of Object.keys(pkg.dependencies ?? {})) {

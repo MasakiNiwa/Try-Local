@@ -1,12 +1,12 @@
 import { memo, useMemo } from 'react';
 import ReactMarkdown, { type Components, type Options } from 'react-markdown';
-import rehypeHighlight from 'rehype-highlight';
 import remarkGfm from 'remark-gfm';
+import rehypeHighlightLite from './rehypeHighlightLite';
 import { splitMarkdownBlocks } from './splitBlocks';
 
 const remarkPlugins: Options['remarkPlugins'] = [remarkGfm];
-// 言語指定のあるコードブロックだけハイライトする（自動判定は重いので無効）
-const rehypePlugins: Options['rehypePlugins'] = [[rehypeHighlight, { detect: false }]];
+// 言語指定のあるコードブロックだけハイライトする（自動判定は重いので行わない）
+const rehypePlugins: Options['rehypePlugins'] = [rehypeHighlightLite];
 
 const components: Components = {
   a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,

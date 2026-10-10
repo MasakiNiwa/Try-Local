@@ -11,15 +11,17 @@ Try Local は以下のオープンソースソフトウェアを利用してい�
 | **clsx** | 2.1.1 | MIT | https://github.com/lukeed/clsx |
 | **comlink** | 4.4.2 | Apache-2.0 | https://github.com/GoogleChromeLabs/comlink |
 | **dexie** | 4.4.6 | Apache-2.0 | https://github.com/dexie/Dexie.js |
+| **hast-util-to-text** | 4.0.2 | MIT | https://github.com/syntax-tree/hast-util-to-text |
 | **highlight.js** | 11.12.0 | BSD-3-Clause | https://github.com/highlightjs/highlight.js |
+| **lowlight** | 3.3.0 | MIT | https://github.com/wooorm/lowlight |
 | **lucide-react** | 1.55.0 | ISC | https://github.com/lucide-icons/lucide |
 | **react** | 19.3.0 | MIT | https://github.com/react/react |
 | **react-dom** | 19.3.0 | MIT | https://github.com/react/react |
 | **react-markdown** | 10.1.0 | MIT | https://github.com/remarkjs/react-markdown |
-| **rehype-highlight** | 7.0.2 | MIT | https://github.com/rehypejs/rehype-highlight |
 | **remark-gfm** | 4.0.1 | MIT | https://github.com/remarkjs/remark-gfm |
 | **sonner** | 2.0.8 | MIT | https://github.com/emilkowalski/sonner |
 | **tailwind-merge** | 3.7.0 | MIT | https://github.com/dcastil/tailwind-merge |
+| **unist-util-visit** | 5.1.0 | MIT | https://github.com/syntax-tree/unist-util-visit |
 | **wouter** | 3.13.0 | Unlicense | https://github.com/molefrog/wouter |
 | **zustand** | 5.0.15 | MIT | https://github.com/pmndrs/zustand |
 | @litertjs/wasm-utils | 2.5.3 | Apache-2.0 | https://github.com/google-ai-edge/LiteRT |
@@ -29,6 +31,7 @@ Try Local は以下のオープンソースソフトウェアを利用してい�
 | @types/hast | 3.0.5 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped |
 | @types/mdast | 4.0.4 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped |
 | @types/ms | 2.1.0 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped |
+| @types/trusted-types | 2.0.7 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped |
 | @types/unist | 3.0.3 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped |
 | @types/unist | 2.0.11 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped |
 | @ungap/structured-clone | 1.4.0 | ISC | https://github.com/ungap/structured-clone |
@@ -48,10 +51,10 @@ Try Local は以下のオープンソースソフトウェアを利用してい�
 | extend | 3.0.2 | MIT | https://github.com/justmoon/node-extend |
 | hast-util-is-element | 3.0.0 | MIT | https://github.com/syntax-tree/hast-util-is-element |
 | hast-util-to-jsx-runtime | 2.3.6 | MIT | https://github.com/syntax-tree/hast-util-to-jsx-runtime |
-| hast-util-to-text | 4.0.2 | MIT | https://github.com/syntax-tree/hast-util-to-text |
 | hast-util-whitespace | 3.0.0 | MIT | https://github.com/syntax-tree/hast-util-whitespace |
 | highlight.js | 11.11.2 | BSD-3-Clause | https://github.com/highlightjs/highlight.js |
 | html-url-attributes | 3.0.1 | MIT | https://github.com/rehypejs/rehype-minify/tree/main/packages/html-url-attributes |
+| idb | 7.1.1 | ISC | https://github.com/jakearchibald/idb |
 | inline-style-parser | 0.2.7 | MIT | https://github.com/remarkablemark/inline-style-parser |
 | is-alphabetical | 2.0.1 | MIT | https://github.com/wooorm/is-alphabetical |
 | is-alphanumerical | 2.0.1 | MIT | https://github.com/wooorm/is-alphanumerical |
@@ -59,7 +62,6 @@ Try Local は以下のオープンソースソフトウェアを利用してい�
 | is-hexadecimal | 2.0.1 | MIT | https://github.com/wooorm/is-hexadecimal |
 | is-plain-obj | 4.1.0 | MIT | https://github.com/sindresorhus/is-plain-obj |
 | longest-streak | 3.1.0 | MIT | https://github.com/wooorm/longest-streak |
-| lowlight | 3.3.0 | MIT | https://github.com/wooorm/lowlight |
 | markdown-table | 3.0.4 | MIT | https://github.com/wooorm/markdown-table |
 | mdast-util-find-and-replace | 3.0.3 | MIT | https://github.com/syntax-tree/mdast-util-find-and-replace |
 | mdast-util-from-markdown | 2.1.0 | MIT | https://github.com/syntax-tree/mdast-util-from-markdown |
@@ -124,11 +126,17 @@ Try Local は以下のオープンソースソフトウェアを利用してい�
 | unist-util-is | 6.0.1 | MIT | https://github.com/syntax-tree/unist-util-is |
 | unist-util-position | 5.0.0 | MIT | https://github.com/syntax-tree/unist-util-position |
 | unist-util-stringify-position | 4.0.0 | MIT | https://github.com/syntax-tree/unist-util-stringify-position |
-| unist-util-visit | 5.1.0 | MIT | https://github.com/syntax-tree/unist-util-visit |
 | unist-util-visit-parents | 6.0.2 | MIT | https://github.com/syntax-tree/unist-util-visit-parents |
 | use-sync-external-store | 1.7.0 | MIT | https://github.com/react/react |
 | vfile | 6.0.3 | MIT | https://github.com/vfile/vfile |
 | vfile-message | 4.0.3 | MIT | https://github.com/vfile/vfile-message |
+| workbox-cacheable-response | 7.4.1 | MIT | https://github.com/googlechrome/workbox |
+| workbox-core | 7.4.1 | MIT | https://github.com/googlechrome/workbox |
+| workbox-expiration | 7.4.1 | MIT | https://github.com/googlechrome/workbox |
+| workbox-precaching | 7.4.1 | MIT | https://github.com/googlechrome/workbox |
+| workbox-routing | 7.4.1 | MIT | https://github.com/googlechrome/workbox |
+| workbox-strategies | 7.4.1 | MIT | https://github.com/googlechrome/workbox |
+| workbox-window | 7.4.1 | MIT | https://github.com/googlechrome/workbox |
 | zwitch | 2.0.4 | MIT | https://github.com/wooorm/zwitch |
 
 **太字** は直接依存しているパッケージです。
