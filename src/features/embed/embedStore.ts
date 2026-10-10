@@ -93,6 +93,8 @@ export const useEmbed = create<EmbedState>()((set, get) => ({
       const message = errorMessage(e);
       console.error(e);
       set({ status: 'error', error: message, progress: null, loadingName: null });
+      // 失敗したランタイムは壊れている可能性があるので、埋め込み用 Worker を作り直す
+      llm.terminateEmbedder();
       // GPU で読み込めなければ CPU で自動的に再試行する
       if (backend === 'gpu') {
         set((s) => ({ fallbackLog: [...s.fallbackLog, { backend, message }] }));

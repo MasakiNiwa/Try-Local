@@ -159,8 +159,7 @@ export const useEngine = create<EngineState>()((set, get) => ({
         loadingName: null,
       });
       // Wasm / GPU が壊れた状態の可能性があるので Worker を作り直す（ダウンロード中は除く）
-      // 埋め込みモデルを読み込み中・使用中なら、同じ Worker を壊さないよう残す
-      if (!get().download && useEmbed.getState().status === 'empty') llm.terminate();
+      if (!get().download) llm.terminate();
 
       const recordFallback = () =>
         set((st) => ({ fallbackLog: [...st.fallbackLog, { backend, message }] }));

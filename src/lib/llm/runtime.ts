@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 /**
- * Worker 内で共有する LiteRT-LM ランタイムの読み込みとストリームのユーティリティ。
- * チャット用エンジンと埋め込みエンジンは同じ Wasm ランタイムを共有する。
+ * Worker 内の LiteRT-LM ランタイムの読み込みとストリームのユーティリティ。
+ * チャット用と埋め込み用は別々の Worker で動かす（client.ts を参照）。
  */
 import { loadLiteRtLm } from '@litert-lm/core';
 
