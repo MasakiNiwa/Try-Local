@@ -41,11 +41,12 @@ function StorageUsage() {
 export default function SettingsPage() {
   const s = useSettings();
   const update = s.update;
-  const clearChat = useChat((st) => st.clear);
+  const deleteAllConversations = useChat((st) => st.deleteAllConversations);
+  const conversationCount = useChat((st) => st.conversations.length);
   const unload = useEngine((st) => st.unload);
   const refreshStored = useEngine((st) => st.refreshStoredModels);
   const storedCount = useEngine((st) => st.storedModels.length);
-  const [confirm, setConfirm] = useState<null | 'models' | 'reset'>(null);
+  const [confirm, setConfirm] = useState<null | 'models' | 'reset' | 'conversations'>(null);
 
   const deleteModels = async () => {
     try {
@@ -232,9 +233,14 @@ export default function SettingsPage() {
           <Field label="ストレージ使用量" hint="このサイトがブラウザ内で使用している容量">
             <StorageUsage />
           </Field>
-          <Field label="会話をクリア">
-            <Button size="sm" onClick={clearChat}>
-              クリア
+          <Field label="会話履歴をすべて削除" hint={`${conversationCount} 件`}>
+            <Button
+              size="sm"
+              variant="danger"
+              disabled={conversationCount === 0}
+              onClick={() => setConfirm('conversations')}
+            >
+              削除
             </Button>
           </Field>
           <Field label="保存済みモデルをすべて削除" hint={`${storedCount} 件`}>
@@ -267,6 +273,17 @@ export default function SettingsPage() {
         confirmLabel="すべて削除"
         danger
         onConfirm={() => void deleteModels()}
+        onClose={() => setConfirm(null)}
+      />
+      <ConfirmDialog
+        open={confirm === 'conversations'}
+        title="会話履歴をすべて削除しますか？"
+        description="保存されているすべての会話を削除します。元に戻せません。"
+        confirmLabel="すべて削除"
+        danger
+        onConfirm={() => {
+          void deleteAllConversations().then(() => toast.success('会話履歴を削除しました'));
+        }}
         onClose={() => setConfirm(null)}
       />
       <ConfirmDialog

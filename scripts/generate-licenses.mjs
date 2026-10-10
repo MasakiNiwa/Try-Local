@@ -131,6 +131,13 @@ const md = [
 const mdPath = path.join(root, 'THIRD_PARTY_NOTICES.md');
 
 if (checkMode) {
+  if (missing.length > 0) {
+    console.error(
+      `No license text for: ${missing.map((p) => `${p.name}@${p.version}`).join(', ')}. ` +
+        'Add a standard text to scripts/license-texts/<SPDX>.txt.',
+    );
+    process.exit(1);
+  }
   const current = existsSync(mdPath) ? readFileSync(mdPath, 'utf8') : '';
   if (current !== md) {
     console.error('THIRD_PARTY_NOTICES.md is out of date. Run `npm run licenses` and commit it.');

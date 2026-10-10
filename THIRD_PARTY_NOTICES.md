@@ -10,6 +10,7 @@ Try Local は以下のオープンソースソフトウェアを利用してい�
 | **@litert-lm/core** | 0.18.0 | Apache-2.0 | https://github.com/google-ai-edge/LiteRT-LM |
 | **clsx** | 2.1.1 | MIT | https://github.com/lukeed/clsx |
 | **comlink** | 4.4.2 | Apache-2.0 | https://github.com/GoogleChromeLabs/comlink |
+| **dexie** | 4.4.6 | Apache-2.0 | https://github.com/dexie/Dexie.js |
 | **highlight.js** | 11.12.0 | BSD-3-Clause | https://github.com/highlightjs/highlight.js |
 | **lucide-react** | 1.55.0 | ISC | https://github.com/lucide-icons/lucide |
 | **react** | 19.3.0 | MIT | https://github.com/react/react |

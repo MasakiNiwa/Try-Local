@@ -1,12 +1,12 @@
-import { Cpu, ExternalLink, Power } from 'lucide-react';
+import { Cpu, Power } from 'lucide-react';
 import { PageBody, PageHeader } from '@/app/PageHeader';
 import { Button } from '@/components/ui/Button';
-import { Card, Section } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { formatBytes, formatDuration } from '@/lib/utils/format';
 import { useEngine } from '@/features/engine/engineStore';
 import { LoadProgressCard } from '@/features/models/LoadProgressCard';
 import { ModelImport } from '@/features/models/ModelImport';
-import { RECOMMENDED_MODELS } from '@/features/models/recommendedModels';
+import { ModelDownload } from '@/features/models/ModelDownload';
 import { StoredModelList } from '@/features/models/StoredModelList';
 import { useSettings } from '@/features/settings/settingsStore';
 import { BACKEND_LABELS } from '@/features/settings/labels';
@@ -75,28 +75,7 @@ export default function ModelsPage() {
         <LoadProgressCard />
         <StoredModelList />
         {!loading && <ModelImport />}
-        <Section
-          title="動作確認済みのモデル"
-          description="LiteRT-LM の Web 版は現在、Web 向けに変換されたモデルに対応しています。Hugging Face からダウンロードして取り込んでください。"
-        >
-          {RECOMMENDED_MODELS.map((m) => (
-            <div key={m.file} className="flex items-center gap-3 px-4 py-3 sm:px-5">
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">{m.file}</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">{m.note}</div>
-              </div>
-              <a
-                href={m.pageUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-sm text-accent-700 hover:bg-accent-50 dark:text-accent-300 dark:hover:bg-accent-900/20"
-              >
-                Hugging Face
-                <ExternalLink className="size-3.5" />
-              </a>
-            </div>
-          ))}
-        </Section>
+        <ModelDownload />
       </PageBody>
     </>
   );

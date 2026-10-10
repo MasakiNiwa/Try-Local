@@ -25,6 +25,7 @@
     "@litert-lm/core": "0.18.0",
     "clsx": "^2.1.1",
     "comlink": "^4.4.2",
+    "dexie": "^4.4.6",
     "highlight.js": "^11.12.0",
     "lucide-react": "^1.55.0",
     "react": "^19.3.0",

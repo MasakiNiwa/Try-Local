@@ -2,7 +2,13 @@ import { toast } from 'sonner';
 import { create } from 'zustand';
 import { llm } from '@/lib/llm/client';
 import { listStoredModels } from '@/lib/llm/modelStorage';
-import type { LoadProgress, LoadedModelInfo, ModelSource, StoredModel } from '@/lib/llm/types';
+import type {
+  DownloadProgress,
+  LoadProgress,
+  LoadedModelInfo,
+  ModelSource,
+  StoredModel,
+} from '@/lib/llm/types';
 import { errorMessage } from '@/lib/utils/format';
 import { useSettings } from '@/features/settings/settingsStore';
 
@@ -16,10 +22,14 @@ interface EngineState {
   model: LoadedModelInfo | null;
   error: string | null;
   storedModels: StoredModel[];
+  /** ダウンロード中の進捗（null: ダウンロードしていない） */
+  download: DownloadProgress | null;
 
   refreshStoredModels: () => Promise<void>;
   load: (source: ModelSource) => Promise<boolean>;
   unload: () => Promise<void>;
+  downloadModel: (url: string) => Promise<void>;
+  cancelDownload: () => void;
 }
 
 export const useEngine = create<EngineState>()((set, get) => ({
@@ -29,6 +39,7 @@ export const useEngine = create<EngineState>()((set, get) => ({
   model: null,
   error: null,
   storedModels: [],
+  download: null,
 
   async refreshStoredModels() {
     try {
@@ -74,8 +85,8 @@ export const useEngine = create<EngineState>()((set, get) => ({
       console.error(e);
       set({ status: 'error', error: message, progress: null, loadingName: null });
       toast.error('モデルの読み込みに失敗しました', { description: message });
-      // Wasm / GPU が壊れた状態の可能性があるので Worker を作り直す
-      llm.terminate();
+      // Wasm / GPU が壊れた状態の可能性があるので Worker を作り直す（ダウンロード中は除く）
+      if (!get().download) llm.terminate();
       return false;
     }
   },
@@ -83,5 +94,44 @@ export const useEngine = create<EngineState>()((set, get) => ({
   async unload() {
     await llm.unloadModel().catch(() => llm.terminate());
     set({ status: 'empty', model: null, progress: null, error: null });
+  },
+
+  async downloadModel(url) {
+    if (get().download) return;
+    set({ download: { name: '', loadedBytes: 0, totalBytes: 0, bytesPerSec: 0 } });
+    let pending: DownloadProgress | null = null;
+    let raf = 0;
+    try {
+      const name = await llm.downloadModel(url, (p) => {
+        pending = p;
+        if (!raf) {
+          raf = requestAnimationFrame(() => {
+            raf = 0;
+            if (get().download) set({ download: pending });
+          });
+        }
+      });
+      cancelAnimationFrame(raf);
+      set({ download: null });
+      await get().refreshStoredModels();
+      toast.success(`${name} をダウンロードしました`);
+      // そのまま読み込む
+      if (get().status !== 'loading') void get().load({ kind: 'stored', name });
+    } catch (e) {
+      cancelAnimationFrame(raf);
+      set({ download: null });
+      const message = errorMessage(e);
+      // Comlink 越しだとエラー名が失われることがあるのでメッセージでも判定する
+      if ((e instanceof Error && e.name === 'AbortError') || /abort/i.test(message)) {
+        toast.info('ダウンロードを中止しました');
+      } else {
+        console.error(e);
+        toast.error('ダウンロードに失敗しました', { description: message });
+      }
+    }
+  },
+
+  cancelDownload() {
+    llm.cancelDownload();
   },
 }));
