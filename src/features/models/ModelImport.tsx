@@ -6,7 +6,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { isOpfsSupported } from '@/lib/llm/modelStorage';
 import { cn } from '@/lib/utils/cn';
 import { useEngine } from '@/features/engine/engineStore';
-import { isWebModelName } from '@/features/engine/loadErrors';
+import { isBrowserCompatibleName } from '@/lib/llm/modelCatalog';
 import { useSettings } from '@/features/settings/settingsStore';
 
 const ACCEPT = '.litertlm';
@@ -27,7 +27,7 @@ export function ModelImport({ compact }: { compact?: boolean }) {
       toast.error('.litertlm ファイルを選んでください', { description: file.name });
       return;
     }
-    if (!isWebModelName(file.name)) {
+    if (!isBrowserCompatibleName(file.name)) {
       setNonWebFile(file);
       return;
     }
@@ -66,8 +66,8 @@ export function ModelImport({ compact }: { compact?: boolean }) {
           <span className="hidden md:inline">、またはここにドロップ</span>
         </p>
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          ファイル名が <code className="font-mono">-web.litertlm</code> で終わる Web
-          版を選んでください
+          ブラウザ対応のモデル（<code className="font-mono">-web.litertlm</code> や Qwen3 0.6B
+          など）を選んでください
         </p>
       </div>
       <Button variant="primary" onClick={() => inputRef.current?.click()} disabled={loading}>
@@ -80,7 +80,7 @@ export function ModelImport({ compact }: { compact?: boolean }) {
       )}
       <ConfirmDialog
         open={nonWebFile !== null}
-        title="Web 版ではないモデルです"
+        title="ブラウザでの動作が未確認のモデルです"
         description={
           <div className="space-y-2">
             <p>
@@ -90,8 +90,8 @@ export function ModelImport({ compact }: { compact?: boolean }) {
               特にスマホではメモリ不足で失敗する可能性が高いです。
             </p>
             <p>
-              Web 版（例:
-              gemma-4-E2B-it-web.litertlm）の利用をおすすめします。続行する場合、動作を確認できるまでブラウザには保存しません。
+              「モデルを入手」にある動作確認済みのモデル（Gemma 4 の Web 版、Qwen3
+              0.6B）の利用をおすすめします。続行する場合、動作を確認できるまでブラウザには保存しません。
             </p>
           </div>
         }

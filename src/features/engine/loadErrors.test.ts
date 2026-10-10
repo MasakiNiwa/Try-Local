@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyLoadError, explainLoadError, isWebModelName } from './loadErrors';
+import { classifyLoadError, explainLoadError } from './loadErrors';
 
 describe('classifyLoadError', () => {
   it('LiteRT-LM のエラーメッセージを分類する', () => {
@@ -13,15 +13,18 @@ describe('classifyLoadError', () => {
   });
 });
 
-describe('isWebModelName / explainLoadError', () => {
+describe('explainLoadError', () => {
   it('Web 版でないファイルには Web 版を勧める', () => {
-    expect(isWebModelName('gemma-4-E2B-it-web.litertlm')).toBe(true);
-    expect(isWebModelName('gemma-4-E2B-it.litertlm')).toBe(false);
     expect(explainLoadError('streaming-unsupported', 'gemma-4-E2B-it.litertlm')).toContain(
       '-web.litertlm',
     );
     expect(explainLoadError('unknown', 'gemma-4-E2B-it-web.litertlm')).toBeUndefined();
     expect(explainLoadError('memory', 'gemma-4-E2B-it.litertlm')).toContain('-web.litertlm');
     expect(explainLoadError('memory', 'gemma-4-E2B-it-web.litertlm')).not.toContain('-web');
+  });
+
+  it('WebGPU が無いとき、WebGPU 専用モデルには CPU ではなく別モデルを勧める', () => {
+    expect(explainLoadError('webgpu', 'gemma-4-E2B-it-web.litertlm')).toContain('Qwen3');
+    expect(explainLoadError('webgpu', 'Qwen3-0.6B.litertlm')).toContain('CPU で読み込めます');
   });
 });

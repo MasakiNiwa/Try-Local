@@ -27,7 +27,7 @@ function Body({ children }: { children: ReactNode }) {
 const STEPS = [
   {
     title: 'モデルをダウンロード',
-    body: 'Hugging Face の litert-community から Web 版の .litertlm ファイル（例: gemma-4-E2B-it-web.litertlm）を端末に保存します。同じリポジトリにある「-web」の付かないファイルはスマホ・PC アプリ向けで、ブラウザでは読み込めないことがあります。',
+    body: '「モデル」画面の「モデルを入手」から、ブラウザで動作が確認されたモデルをダウンロードします。まずは最軽量の Qwen3 0.6B（約 614MB）、品質重視なら Gemma 4 E2B の Web 版（約 2GB・WebGPU 専用）がおすすめです。「-web」の付かない Gemma のファイルはスマホ・PC アプリ向けで、ブラウザでは読み込めないことがあります。',
   },
   {
     title: 'モデルを取り込む',
@@ -107,8 +107,8 @@ export default function HelpPage() {
             <p>
               設定のバックエンドが「自動」なら、WebGPU が使えない端末では{' '}
               <strong>CPU（WebAssembly）</strong>
-              で実行します。GPU
-              より遅く、モデル全体をメモリに読み込むため空きメモリが多めに必要です。 GPU
+              で実行します。ただし Gemma 4 の Web 版は WebGPU 専用のため CPU では動きません。CPU
+              では Qwen3 0.6B など CPU にも対応したモデルを使ってください。GPU
               で動かしたい場合は、次の点を確認してください。
             </p>
             <ul className="list-disc space-y-1.5 pl-5 text-slate-600 dark:text-slate-400">

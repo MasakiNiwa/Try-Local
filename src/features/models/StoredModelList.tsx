@@ -7,7 +7,7 @@ import { deleteStoredModel } from '@/lib/llm/modelStorage';
 import { cn } from '@/lib/utils/cn';
 import { errorMessage, formatBytes } from '@/lib/utils/format';
 import { useEngine } from '@/features/engine/engineStore';
-import { isWebModelName } from '@/features/engine/loadErrors';
+import { isBrowserCompatibleName } from '@/lib/llm/modelCatalog';
 import { useSettings } from '@/features/settings/settingsStore';
 
 /** OPFS に保存済みのモデル一覧 */
@@ -70,9 +70,9 @@ export function StoredModelList({ compact }: { compact?: boolean }) {
                   {active && (
                     <span className="ml-2 text-accent-600 dark:text-accent-400">使用中</span>
                   )}
-                  {!isWebModelName(m.name) && (
+                  {!isBrowserCompatibleName(m.name) && (
                     <span className="ml-2 text-amber-600 dark:text-amber-400">
-                      Web 版ではありません
+                      ブラウザ未対応の可能性
                     </span>
                   )}
                 </div>

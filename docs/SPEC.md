@@ -39,6 +39,9 @@
 - **GPU / CPU**: 既定は「自動」。WebGPU のアダプタが取れれば `GPU_ARTISAN`（モデルをストリーミング読み込み）、
   取れなければ `CPU`（WebAssembly + XNNPack。モデル全体を Wasm メモリに読み込むため最大 4GB 制約あり）。
   GPU 起因の読み込み失敗時は「CPU で再試行」を提示する。WebGL2 は LiteRT-LM が非対応のため使わない
+- **対応モデル**: `src/lib/llm/modelCatalog.ts` で管理。Gemma 4 の Web 版（公式・WebGPU 専用）と
+  Qwen3 0.6B（公式サポート外・GPU / CPU 両対応の動作報告あり）。WebGPU 専用モデルは CPU では読み込む前に止める。
+  ストリーミング非対応の形式は「通常の GPU 読み込み → CPU」の順に自動で再試行する
 - **Wasm ランタイムはセルフホスト**: `@litert-lm/core/wasm/*` をビルド時に `dist/litertlm-wasm/` にコピー（バージョンが npm と常に一致）。
   ブラウザの機能（JSPI / Relaxed SIMD）に応じて最適な Wasm をライブラリが自動選択する
 - **モデル保存**: 取り込み時に「エンジンへの読み込み」と「OPFS への保存」を同じ File から並行実行
