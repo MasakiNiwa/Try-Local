@@ -5,6 +5,11 @@ export interface RecommendedModel {
   note: string;
 }
 
+/** 直接ダウンロード用の URL */
+export function downloadUrl(m: RecommendedModel): string {
+  return `https://huggingface.co/${m.repo}/resolve/main/${m.file}`;
+}
+
 /** @litert-lm/core の README で Web 対応が明記されているモデル */
 export const RECOMMENDED_MODELS: RecommendedModel[] = [
   {

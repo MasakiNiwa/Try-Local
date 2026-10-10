@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import { llm } from '@/lib/llm/client';
 import { listStoredModels } from '@/lib/llm/modelStorage';
+import { useChat } from '@/features/chat/chatStore';
 import { useEngine } from '@/features/engine/engineStore';
 import { useSettings } from '@/features/settings/settingsStore';
 
 /**
  * 起動時の処理:
+ * - 会話履歴（IndexedDB）の読み込み
  * - 保存済みモデル一覧の取得
  * - 前回のモデルの自動読み込み（設定でオン かつ OPFS に存在する場合）
  * - それ以外はアイドル時に Wasm ランタイムを先読みして初回読み込みを速くする
@@ -18,6 +20,7 @@ const idle: (cb: () => void) => void =
 export function useStartup() {
   useEffect(() => {
     let cancelled = false;
+    void useChat.getState().init();
     // 最初の応答表示で待たないよう、Markdown レンダラーを先読みしておく
     idle(() => void import('@/features/chat/markdown/Markdown'));
     (async () => {

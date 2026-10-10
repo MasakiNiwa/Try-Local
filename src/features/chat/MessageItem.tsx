@@ -1,9 +1,19 @@
-import { lazy, memo, Suspense, useState } from 'react';
-import { AlertCircle, Brain, Check, ChevronRight, Copy, Square } from 'lucide-react';
+import { lazy, memo, Suspense, useState, type ReactNode } from 'react';
+import {
+  AlertCircle,
+  Brain,
+  Check,
+  ChevronRight,
+  Copy,
+  Pencil,
+  RotateCcw,
+  Square,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils/cn';
 import { formatDuration } from '@/lib/utils/format';
-import type { ChatMessage } from './chatStore';
+import { useChat, type ChatMessage } from './chatStore';
 
 const Markdown = lazy(() => import('./markdown/Markdown'));
 
@@ -21,11 +31,36 @@ function TypingDots() {
   );
 }
 
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
+function ActionButton({
+  label,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
   return (
     <button
       type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className="inline-flex size-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-200/70 hover:text-slate-800 disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-slate-800 dark:hover:text-slate-200 [&_svg]:size-3.5"
+    >
+      {children}
+    </button>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <ActionButton
+      label="コピー"
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
@@ -35,12 +70,9 @@ function CopyButton({ text }: { text: string }) {
           toast.error('コピーできませんでした');
         }
       }}
-      className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-slate-500 hover:bg-slate-200/70 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-      aria-label="コピー"
-      title="コピー"
     >
-      {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-    </button>
+      {copied ? <Check /> : <Copy />}
+    </ActionButton>
   );
 }
 
@@ -64,6 +96,7 @@ function ChannelPanel({ name, text, live }: { name: string; text: string; live: 
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
         className="flex w-full items-center gap-1.5 px-3 py-2 text-slate-600 dark:text-slate-300"
       >
         <ChevronRight className={cn('size-4 transition-transform', open && 'rotate-90')} />
@@ -80,27 +113,81 @@ function ChannelPanel({ name, text, live }: { name: string; text: string; live: 
   );
 }
 
-interface MessageItemProps {
-  message: ChatMessage;
-  showStats: boolean;
-}
+function UserMessage({ message, busy }: { message: ChatMessage; busy: boolean }) {
+  const editAndResend = useChat((s) => s.editAndResend);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(message.text);
 
-/** 1 件のメッセージ。生成中のメッセージ以外は再描画されない（memo） */
-export const MessageItem = memo(function MessageItem({ message, showStats }: MessageItemProps) {
-  if (message.role === 'user') {
+  if (editing) {
     return (
-      <div className="flex animate-fade-in justify-end [content-visibility:auto] [contain-intrinsic-size:auto_60px]">
-        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-accent-600 px-4 py-2.5 text-[0.95rem] leading-relaxed whitespace-pre-wrap text-white shadow-sm sm:max-w-[75%]">
-          {message.text}
-        </div>
+      <div className="flex animate-fade-in justify-end">
+        <form
+          className="w-full max-w-[85%] space-y-2 sm:max-w-[75%]"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setEditing(false);
+            void editAndResend(message.id, draft);
+          }}
+        >
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            autoFocus
+            rows={3}
+            aria-label="メッセージを編集"
+            className="w-full resize-y rounded-2xl border border-accent-400 bg-white px-4 py-2.5 text-[0.95rem] leading-relaxed outline-none dark:bg-slate-900"
+          />
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+              キャンセル
+            </Button>
+            <Button size="sm" variant="primary" type="submit" disabled={busy || !draft.trim()}>
+              送信
+            </Button>
+          </div>
+        </form>
       </div>
     );
   }
 
+  return (
+    <div className="group flex animate-fade-in flex-col items-end [contain-intrinsic-size:auto_60px] [content-visibility:auto]">
+      <div className="max-w-[85%] rounded-2xl rounded-br-md bg-accent-600 px-4 py-2.5 text-[0.95rem] leading-relaxed whitespace-pre-wrap text-white shadow-sm sm:max-w-[75%]">
+        {message.text}
+      </div>
+      <div className="mt-0.5 flex gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+        <CopyButton text={message.text} />
+        <ActionButton
+          label="編集して送り直す"
+          disabled={busy}
+          onClick={() => {
+            setDraft(message.text);
+            setEditing(true);
+          }}
+        >
+          <Pencil />
+        </ActionButton>
+      </div>
+    </div>
+  );
+}
+
+function AssistantMessage({
+  message,
+  showStats,
+  isLast,
+  busy,
+}: {
+  message: ChatMessage;
+  showStats: boolean;
+  isLast: boolean;
+  busy: boolean;
+}) {
+  const regenerate = useChat((s) => s.regenerate);
   const live = message.status === 'pending' || message.status === 'streaming';
   const channels = Object.entries(message.channels ?? {});
   return (
-    <div className="group flex animate-fade-in flex-col items-start [content-visibility:auto] [contain-intrinsic-size:auto_120px]">
+    <div className="group flex animate-fade-in flex-col items-start [contain-intrinsic-size:auto_120px] [content-visibility:auto]">
       <div className="w-full max-w-full min-w-0">
         {channels.map(([name, text]) => (
           <ChannelPanel key={name} name={name} text={text} live={live && !message.text} />
@@ -122,8 +209,15 @@ export const MessageItem = memo(function MessageItem({ message, showStats }: Mes
         )}
       </div>
       {!live && (
-        <div className="mt-1 flex min-h-7 flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          {message.text && <CopyButton text={message.text} />}
+        <div className="mt-1 flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex gap-0.5">
+            {message.text && <CopyButton text={message.text} />}
+            {isLast && (
+              <ActionButton label="再生成" onClick={() => void regenerate()} disabled={busy}>
+                <RotateCcw />
+              </ActionButton>
+            )}
+          </div>
           {message.status === 'cancelled' && (
             <span className="inline-flex items-center gap-1">
               <Square className="size-3" />
@@ -134,5 +228,27 @@ export const MessageItem = memo(function MessageItem({ message, showStats }: Mes
         </div>
       )}
     </div>
+  );
+}
+
+interface MessageItemProps {
+  message: ChatMessage;
+  showStats: boolean;
+  isLast: boolean;
+  /** 生成中（編集・再生成を無効にする） */
+  busy: boolean;
+}
+
+/** 1 件のメッセージ。props が変わらない限り再描画しない（memo） */
+export const MessageItem = memo(function MessageItem({
+  message,
+  showStats,
+  isLast,
+  busy,
+}: MessageItemProps) {
+  return message.role === 'user' ? (
+    <UserMessage message={message} busy={busy} />
+  ) : (
+    <AssistantMessage message={message} showStats={showStats} isLast={isLast} busy={busy} />
   );
 });

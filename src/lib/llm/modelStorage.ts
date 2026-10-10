@@ -45,8 +45,42 @@ export async function deleteAllStoredModels(): Promise<void> {
 }
 
 /**
- * File を OPFS にストリームコピーする。
- * 同名ファイルがありサイズも一致する場合はスキップする。
+ * ストリームを OPFS のファイルに書き込む。失敗・中断時は書きかけのファイルを削除する。
+ */
+export async function saveModelStream(
+  name: string,
+  stream: ReadableStream<Uint8Array>,
+  onProgress?: (writtenBytes: number) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const dir = await modelsDir();
+  // 退避されにくくする（ユーザー許可が要る場合もあるので結果は問わない）
+  void navigator.storage.persist?.().catch(() => false);
+
+  const handle = await dir.getFileHandle(name, { create: true });
+  const writable = await handle.createWritable();
+  let written = 0;
+  try {
+    await stream
+      .pipeThrough(
+        new TransformStream<Uint8Array, Uint8Array>({
+          transform(chunk, controller) {
+            written += chunk.byteLength;
+            onProgress?.(written);
+            controller.enqueue(chunk);
+          },
+        }),
+      )
+      .pipeTo(writable, { signal });
+  } catch (e) {
+    // 中途半端なファイルを残さない
+    await dir.removeEntry(name).catch(() => undefined);
+    throw e;
+  }
+}
+
+/**
+ * File を OPFS にコピーする。同名ファイルがありサイズも一致する場合はスキップする。
  */
 export async function saveModelFile(
   file: File,
@@ -62,28 +96,5 @@ export async function saveModelFile(
   } catch {
     // 未保存
   }
-  // 退避されにくくする（ユーザー許可が要る場合もあるので結果は問わない）
-  void navigator.storage.persist?.().catch(() => false);
-
-  const handle = await dir.getFileHandle(file.name, { create: true });
-  const writable = await handle.createWritable();
-  let written = 0;
-  try {
-    await file
-      .stream()
-      .pipeThrough(
-        new TransformStream<Uint8Array, Uint8Array>({
-          transform(chunk, controller) {
-            written += chunk.byteLength;
-            onProgress?.(written);
-            controller.enqueue(chunk);
-          },
-        }),
-      )
-      .pipeTo(writable);
-  } catch (e) {
-    // 中途半端なファイルを残さない
-    await dir.removeEntry(file.name).catch(() => undefined);
-    throw e;
-  }
+  await saveModelStream(file.name, file.stream(), onProgress);
 }

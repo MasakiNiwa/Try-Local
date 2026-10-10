@@ -8,6 +8,7 @@ import { useStickToBottom } from './useStickToBottom';
 export function MessageList() {
   const messages = useChat((s) => s.messages);
   const showStats = useSettings((s) => s.showStats);
+  const busy = useChat((s) => s.isGenerating);
   const { scrollRef, contentRef, atBottom, scrollToBottom } = useStickToBottom<
     HTMLDivElement,
     HTMLDivElement
@@ -17,8 +18,14 @@ export function MessageList() {
     <div className="relative min-h-0 flex-1">
       <div ref={scrollRef} className="h-full overflow-y-auto overscroll-contain">
         <div ref={contentRef} className="mx-auto w-full max-w-3xl space-y-5 px-3 py-5 sm:px-4">
-          {messages.map((m) => (
-            <MessageItem key={m.id} message={m} showStats={showStats} />
+          {messages.map((m, i) => (
+            <MessageItem
+              key={m.id}
+              message={m}
+              showStats={showStats}
+              isLast={i === messages.length - 1}
+              busy={busy}
+            />
           ))}
         </div>
       </div>

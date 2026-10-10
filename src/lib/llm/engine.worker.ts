@@ -19,11 +19,13 @@ import {
   type Message,
 } from '@litert-lm/core';
 import * as Comlink from 'comlink';
-import { getStoredModelFile, saveModelFile } from './modelStorage';
+import { fileNameFromUrl, normalizeModelUrl } from './download';
+import { getStoredModelFile, saveModelFile, saveModelStream } from './modelStorage';
 import type {
   BackendKind,
   ChatTurn,
   ConversationSettings,
+  DownloadProgress,
   GenerateEvent,
   GenerateRequest,
   GenerateResult,
@@ -50,6 +52,7 @@ let conversation: Conversation | null = null;
 let conversationTurnIds: string[] | null = null;
 let conversationSettingsKey = '';
 let cancelRequested = false;
+let downloadAbort: AbortController | null = null;
 
 function ensureRuntime(wasmBaseUrl: string): Promise<unknown> {
   if (!runtimePromise) {
@@ -217,6 +220,60 @@ const api = {
   /** 会話をリセットする（次回の送信時に新しい Conversation を作る） */
   async resetConversation(): Promise<void> {
     await disposeConversation();
+  },
+
+  /**
+   * URL からモデルをダウンロードし、OPFS に直接ストリーム保存する（メモリに溜めない）。
+   * 戻り値は保存したファイル名。
+   */
+  async downloadModel(
+    inputUrl: string,
+    onProgress: (p: DownloadProgress) => void,
+  ): Promise<string> {
+    if (downloadAbort) throw new Error('別のダウンロードが進行中です');
+    const url = normalizeModelUrl(inputUrl);
+    const name = fileNameFromUrl(url);
+    if (!name) throw new Error('URL の末尾が .litertlm ファイルではありません');
+
+    const abort = new AbortController();
+    downloadAbort = abort;
+    try {
+      const res = await fetch(url, { signal: abort.signal });
+      if (!res.ok || !res.body) {
+        throw new Error(
+          res.status === 401 || res.status === 403
+            ? `アクセスが拒否されました（HTTP ${res.status}）。ライセンスへの同意やログインが必要なモデルは、ブラウザでダウンロードしてから取り込んでください。`
+            : `ダウンロードに失敗しました（HTTP ${res.status}）`,
+        );
+      }
+      const total = Number(res.headers.get('content-length')) || 0;
+      let lastReport = 0;
+      const started = performance.now();
+      await saveModelStream(
+        name,
+        res.body,
+        (loaded) => {
+          const now = performance.now();
+          if (now - lastReport < 100 && loaded !== total) return;
+          lastReport = now;
+          const elapsed = (now - started) / 1000;
+          onProgress({
+            name,
+            loadedBytes: loaded,
+            totalBytes: total,
+            bytesPerSec: elapsed > 0 ? loaded / elapsed : 0,
+          });
+        },
+        abort.signal,
+      );
+      return name;
+    } finally {
+      downloadAbort = null;
+    }
+  },
+
+  cancelDownload(): void {
+    downloadAbort?.abort();
   },
 
   cancel(): void {

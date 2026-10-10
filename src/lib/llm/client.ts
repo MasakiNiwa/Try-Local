@@ -5,6 +5,7 @@
 import * as Comlink from 'comlink';
 import type { EngineWorkerApi } from './engine.worker';
 import type {
+  DownloadProgress,
   GenerateEvent,
   GenerateRequest,
   GenerateResult,
@@ -57,6 +58,14 @@ export const llm = {
 
   cancel(): void {
     void remote?.cancel();
+  },
+
+  downloadModel(url: string, onProgress: (p: DownloadProgress) => void): Promise<string> {
+    return getRemote().downloadModel(url, Comlink.proxy(onProgress));
+  },
+
+  cancelDownload(): void {
+    void remote?.cancelDownload();
   },
 
   /**

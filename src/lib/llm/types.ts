@@ -86,3 +86,11 @@ export interface StoredModel {
   sizeBytes: number;
   lastModified: number;
 }
+
+export interface DownloadProgress {
+  name: string;
+  loadedBytes: number;
+  /** Content-Length が無い場合は 0 */
+  totalBytes: number;
+  bytesPerSec: number;
+}

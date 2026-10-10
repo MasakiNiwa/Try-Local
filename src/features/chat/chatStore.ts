@@ -1,33 +1,35 @@
 import { toast } from 'sonner';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { llm } from '@/lib/llm/client';
-import type { ChatTurn, GenerationStats } from '@/lib/llm/types';
-import { createDebouncedStorage } from '@/lib/utils/debouncedStorage';
+import type { ChatTurn } from '@/lib/llm/types';
 import { errorMessage } from '@/lib/utils/format';
 import { createId } from '@/lib/utils/id';
 import { getConversationSettings, useSettings } from '@/features/settings/settingsStore';
+import { makeTitle } from './title';
+import type { ChatMessage, Conversation, ConversationSummary } from './types';
 
-export type MessageStatus = 'pending' | 'streaming' | 'done' | 'cancelled' | 'error';
-
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  text: string;
-  /** 思考（thought チャネル）など本文以外の出力 */
-  channels?: Record<string, string>;
-  status: MessageStatus;
-  error?: string;
-  stats?: GenerationStats;
-  createdAt: number;
-}
+export type { ChatMessage, MessageStatus } from './types';
 
 interface ChatState {
+  /** IndexedDB からの読み込みが終わったか */
+  ready: boolean;
+  conversationId: string;
+  createdAt: number;
   messages: ChatMessage[];
+  conversations: ConversationSummary[];
   isGenerating: boolean;
+
+  init: () => Promise<void>;
   send: (text: string) => Promise<void>;
+  regenerate: () => Promise<void>;
+  editAndResend: (messageId: string, text: string) => Promise<void>;
   stop: () => void;
+  /** 現在の会話のメッセージを消去する */
   clear: () => void;
+  newConversation: () => void;
+  openConversation: (id: string) => Promise<void>;
+  deleteConversation: (id: string) => Promise<void>;
+  deleteAllConversations: () => Promise<void>;
 }
 
 /** Worker に渡す履歴（エラーになった応答と空の応答は除外する） */
@@ -41,104 +43,225 @@ function toHistory(messages: ChatMessage[]): ChatTurn[] {
   return turns;
 }
 
-export const useChat = create<ChatState>()(
-  persist(
-    (set, get) => ({
-      messages: [],
-      isGenerating: false,
+function emptyConversation(): Pick<ChatState, 'conversationId' | 'createdAt' | 'messages'> {
+  return { conversationId: createId(), createdAt: Date.now(), messages: [] };
+}
 
-      async send(text) {
-        const trimmed = text.trim();
-        if (!trimmed || get().isGenerating) return;
+let initPromise: Promise<void> | null = null;
 
-        const history = toHistory(get().messages);
-        const user: ChatMessage = {
-          id: createId(),
-          role: 'user',
-          text: trimmed,
-          status: 'done',
-          createdAt: Date.now(),
-        };
-        const assistantId = createId();
-        const assistant: ChatMessage = {
-          id: assistantId,
-          role: 'assistant',
-          text: '',
-          status: 'pending',
-          createdAt: Date.now(),
-        };
-        set((s) => ({ messages: [...s.messages, user, assistant], isGenerating: true }));
+/** IndexedDB（Dexie）は初回描画に不要なので遅延読み込みする */
+const loadRepo = () => import('./db');
 
-        const patchAssistant = (patch: Partial<ChatMessage>) =>
-          set((s) => ({
-            messages: s.messages.map((m) => (m.id === assistantId ? { ...m, ...patch } : m)),
-          }));
+export const useChat = create<ChatState>()((set, get) => {
+  /** 現在の会話を保存する（メッセージが無ければ保存しない） */
+  const persist = async () => {
+    const { conversationId, createdAt, messages } = get();
+    if (messages.length === 0) return;
+    const conv: Conversation = {
+      id: conversationId,
+      title: makeTitle(messages),
+      createdAt,
+      updatedAt: Date.now(),
+      messages,
+    };
+    try {
+      const repo = await loadRepo();
+      await repo.saveConversation(conv);
+      set({ conversations: await repo.listConversations() });
+    } catch (e) {
+      console.warn('会話の保存に失敗しました', e);
+    }
+  };
 
-        // トークンはフレーム単位にまとめて描画する（再描画回数を最小化）
-        let textBuf = '';
-        const channelBuf: Record<string, string> = {};
-        let dirty = false;
-        let raf = 0;
-        const flush = () => {
-          raf = 0;
-          if (!dirty) return;
-          dirty = false;
-          patchAssistant({
-            text: textBuf,
-            channels: Object.keys(channelBuf).length ? { ...channelBuf } : undefined,
-            status: 'streaming',
-          });
-        };
+  /**
+   * user メッセージ（既に messages に追加済み）に対する応答を生成する。
+   * history は user より前のメッセージ。
+   */
+  const generate = async (history: ChatMessage[], user: ChatMessage) => {
+    const conversationId = get().conversationId;
+    const assistantId = createId();
+    const assistant: ChatMessage = {
+      id: assistantId,
+      role: 'assistant',
+      text: '',
+      status: 'pending',
+      createdAt: Date.now(),
+    };
+    set((s) => ({ messages: [...s.messages, assistant], isGenerating: true }));
+    void persist();
 
-        try {
-          const result = await llm.generate(
-            {
-              settings: getConversationSettings(useSettings.getState()),
-              history,
-              message: { id: user.id, role: 'user', text: trimmed },
-              assistantId,
-            },
-            (ev) => {
-              if (ev.type !== 'delta') return;
-              if (ev.channel) channelBuf[ev.channel] = (channelBuf[ev.channel] ?? '') + ev.text;
-              else textBuf += ev.text;
-              dirty = true;
-              if (!raf) raf = requestAnimationFrame(flush);
-            },
-          );
-          cancelAnimationFrame(raf);
+    const patchAssistant = (patch: Partial<ChatMessage>) => {
+      // 生成中に別の会話へ切り替わった場合は反映しない
+      if (get().conversationId !== conversationId) return;
+      set((s) => ({
+        messages: s.messages.map((m) => (m.id === assistantId ? { ...m, ...patch } : m)),
+      }));
+    };
+
+    // トークンはフレーム単位にまとめて描画する（再描画回数を最小化）
+    let textBuf = '';
+    const channelBuf: Record<string, string> = {};
+    let dirty = false;
+    let raf = 0;
+    const flush = () => {
+      raf = 0;
+      if (!dirty) return;
+      dirty = false;
+      patchAssistant({
+        text: textBuf,
+        channels: Object.keys(channelBuf).length ? { ...channelBuf } : undefined,
+        status: 'streaming',
+      });
+    };
+
+    try {
+      const result = await llm.generate(
+        {
+          settings: getConversationSettings(useSettings.getState()),
+          history: toHistory(history),
+          message: { id: user.id, role: 'user', text: user.text },
+          assistantId,
+        },
+        (ev) => {
+          if (ev.type !== 'delta') return;
+          if (ev.channel) channelBuf[ev.channel] = (channelBuf[ev.channel] ?? '') + ev.text;
+          else textBuf += ev.text;
           dirty = true;
-          flush();
-          patchAssistant({ status: result.status, stats: result.stats });
+          if (!raf) raf = requestAnimationFrame(flush);
+        },
+      );
+      cancelAnimationFrame(raf);
+      dirty = true;
+      flush();
+      patchAssistant({ status: result.status, stats: result.stats });
+    } catch (e) {
+      cancelAnimationFrame(raf);
+      const message = errorMessage(e);
+      console.error(e);
+      patchAssistant({ text: textBuf, status: 'error', error: message });
+      toast.error('生成中にエラーが発生しました', { description: message });
+    } finally {
+      set({ isGenerating: false });
+      if (get().conversationId === conversationId) void persist();
+    }
+  };
+
+  const sendUser = async (history: ChatMessage[], text: string) => {
+    const user: ChatMessage = {
+      id: createId(),
+      role: 'user',
+      text,
+      status: 'done',
+      createdAt: Date.now(),
+    };
+    set({ messages: [...history, user] });
+    await generate(history, user);
+  };
+
+  return {
+    ready: false,
+    ...emptyConversation(),
+    conversations: [],
+    isGenerating: false,
+
+    init() {
+      initPromise ??= (async () => {
+        try {
+          const repo = await loadRepo();
+          await repo.migrateLegacyChat();
+          const conversations = await repo.listConversations();
+          set({ conversations });
+          const latest = conversations[0] && (await repo.getConversation(conversations[0].id));
+          if (latest && get().messages.length === 0) {
+            set({
+              conversationId: latest.id,
+              createdAt: latest.createdAt,
+              messages: latest.messages,
+            });
+          }
         } catch (e) {
-          cancelAnimationFrame(raf);
-          const message = errorMessage(e);
-          console.error(e);
-          patchAssistant({ text: textBuf, status: 'error', error: message });
-          toast.error('生成中にエラーが発生しました', { description: message });
-        } finally {
-          set({ isGenerating: false });
+          console.warn('会話履歴を読み込めませんでした', e);
         }
-      },
-
-      stop() {
-        if (get().isGenerating) llm.cancel();
-      },
-
-      clear() {
-        if (get().isGenerating) llm.cancel();
-        set({ messages: [] });
-        void llm.resetConversation();
-      },
-    }),
-    {
-      name: 'try-local:chat',
-      version: 1,
-      storage: createDebouncedStorage<Pick<ChatState, 'messages'>>(),
-      // 生成途中のメッセージは保存しない
-      partialize: (s) => ({
-        messages: s.messages.filter((m) => m.status !== 'pending' && m.status !== 'streaming'),
-      }),
+        set({ ready: true });
+      })();
+      return initPromise;
     },
-  ),
-);
+
+    async send(text) {
+      const trimmed = text.trim();
+      if (!trimmed || get().isGenerating) return;
+      await sendUser(get().messages, trimmed);
+    },
+
+    async regenerate() {
+      const { messages, isGenerating } = get();
+      if (isGenerating) return;
+      // 最後のユーザー発話以降を捨てて、同じ発話で生成し直す
+      let i = messages.length - 1;
+      while (i >= 0 && messages[i].role !== 'user') i--;
+      if (i < 0) return;
+      const user = messages[i];
+      const history = messages.slice(0, i);
+      set({ messages: [...history, user] });
+      await generate(history, user);
+    },
+
+    async editAndResend(messageId, text) {
+      const trimmed = text.trim();
+      const { messages, isGenerating } = get();
+      if (!trimmed || isGenerating) return;
+      const i = messages.findIndex((m) => m.id === messageId);
+      if (i < 0) return;
+      await sendUser(messages.slice(0, i), trimmed);
+    },
+
+    stop() {
+      if (get().isGenerating) llm.cancel();
+    },
+
+    clear() {
+      if (get().isGenerating) llm.cancel();
+      const id = get().conversationId;
+      set({ messages: [] });
+      void llm.resetConversation();
+      void loadRepo().then(async (repo) => {
+        await repo.deleteConversation(id);
+        set({ conversations: await repo.listConversations() });
+      });
+    },
+
+    newConversation() {
+      if (get().isGenerating) llm.cancel();
+      set(emptyConversation());
+      void llm.resetConversation();
+    },
+
+    async openConversation(id) {
+      if (id === get().conversationId) return;
+      if (get().isGenerating) llm.cancel();
+      const repo = await loadRepo();
+      const conv = await repo.getConversation(id);
+      if (!conv) {
+        toast.error('会話が見つかりませんでした');
+        return;
+      }
+      set({ conversationId: conv.id, createdAt: conv.createdAt, messages: conv.messages });
+      // Worker 側は履歴 ID の不一致を検出して自動的に会話を作り直す
+    },
+
+    async deleteConversation(id) {
+      const repo = await loadRepo();
+      await repo.deleteConversation(id);
+      if (id === get().conversationId) get().newConversation();
+      set({ conversations: await repo.listConversations() });
+    },
+
+    async deleteAllConversations() {
+      if (get().isGenerating) llm.cancel();
+      const repo = await loadRepo();
+      await repo.deleteAllConversations();
+      set({ ...emptyConversation(), conversations: [] });
+      void llm.resetConversation();
+    },
+  };
+});
