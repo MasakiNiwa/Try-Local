@@ -67,6 +67,8 @@ export type GenerateEvent =
   | { type: 'delta'; text: string; channel?: string };
 
 export interface GenerationStats {
+  /** 生成に使ったバックエンド */
+  backend?: BackendKind;
   totalMs: number;
   ttftMs?: number;
   prefillTokens?: number;

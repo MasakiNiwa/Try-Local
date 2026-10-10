@@ -15,6 +15,8 @@ export interface Settings extends ConversationSettings {
   saveImportedModels: boolean;
   autoLoadLastModel: boolean;
   lastModelName: string | null;
+  /** 自動設定時に、フォールバックで読み込めたバックエンドをモデルごとに覚えておく（次回から直接使う） */
+  backendHints: Record<string, BackendKind>;
   // 表示・操作
   theme: ThemeSetting;
   enterToSend: boolean;
@@ -35,6 +37,7 @@ export const DEFAULT_SETTINGS: Settings = {
   saveImportedModels: true,
   autoLoadLastModel: true,
   lastModelName: null,
+  backendHints: {},
 
   theme: 'system',
   enterToSend: true,
@@ -52,7 +55,12 @@ export const useSettings = create<SettingsState>()(
       ...DEFAULT_SETTINGS,
       update: (patch) => set(patch),
       // 前回のモデル名はリセット対象外（自動読み込みのため）
-      reset: () => set((s) => ({ ...DEFAULT_SETTINGS, lastModelName: s.lastModelName })),
+      reset: () =>
+        set((s) => ({
+          ...DEFAULT_SETTINGS,
+          lastModelName: s.lastModelName,
+          backendHints: s.backendHints,
+        })),
     }),
     {
       name: 'try-local:settings',
