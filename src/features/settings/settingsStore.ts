@@ -1,0 +1,71 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import type { BackendKind, ConversationSettings } from '@/lib/llm/types';
+
+export type ThemeSetting = 'system' | 'light' | 'dark';
+
+export interface Settings extends ConversationSettings {
+  // エンジン（変更後はモデルの再読み込みが必要）
+  backend: BackendKind;
+  maxNumTokens: number;
+  // モデル管理
+  saveImportedModels: boolean;
+  autoLoadLastModel: boolean;
+  lastModelName: string | null;
+  // 表示・操作
+  theme: ThemeSetting;
+  enterToSend: boolean;
+  showStats: boolean;
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  systemPrompt: '',
+  temperature: 1.0,
+  topK: 64,
+  topP: 0.95,
+  maxOutputTokens: 2048,
+  enableThinking: false,
+
+  backend: 'gpu-artisan',
+  maxNumTokens: 4096,
+
+  saveImportedModels: true,
+  autoLoadLastModel: true,
+  lastModelName: null,
+
+  theme: 'system',
+  enterToSend: true,
+  showStats: true,
+};
+
+interface SettingsState extends Settings {
+  update: (patch: Partial<Settings>) => void;
+  reset: () => void;
+}
+
+export const useSettings = create<SettingsState>()(
+  persist(
+    (set) => ({
+      ...DEFAULT_SETTINGS,
+      update: (patch) => set(patch),
+      // 前回のモデル名はリセット対象外（自動読み込みのため）
+      reset: () => set((s) => ({ ...DEFAULT_SETTINGS, lastModelName: s.lastModelName })),
+    }),
+    {
+      name: 'try-local:settings',
+      version: 1,
+      partialize: ({ update: _u, reset: _r, ...rest }) => rest,
+    },
+  ),
+);
+
+export function getConversationSettings(s: Settings): ConversationSettings {
+  return {
+    systemPrompt: s.systemPrompt,
+    temperature: s.temperature,
+    topK: s.topK,
+    topP: s.topP,
+    maxOutputTokens: s.maxOutputTokens,
+    enableThinking: s.enableThinking,
+  };
+}

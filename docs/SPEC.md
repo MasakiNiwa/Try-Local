@@ -1,0 +1,103 @@
+# Try Local 仕様書
+
+## コンセプト
+
+他の Web アプリにブラウザローカル LLM を組み込むために学ぶための、**LiteRT-LM のブラウザ実行テスト用 Web アプリ**。
+
+## 基本方針
+
+- まずはチャット環境をしっかり構築する
+- Hugging Face からダウンロードした `.litertlm` ファイルを取り込める
+- **サクサク・ヌルヌル**のストレスのない動作を最優先する
+- 既存のライブラリを積極的に活用し、将来の拡張性・保守性を重視する
+- 作って公開 → 確認 → 改善を小さく繰り返す（PR 単位でフェーズを進める）
+
+## UI / デザイン
+
+- スマホ・PC 両対応（`md` = 768px 未満をスマホレイアウト）
+  - スマホ: 画面下部にナビゲーションバー
+  - PC: 左サイドバー
+- ページ: **チャット** / **モデル** / **設定** / **ヘルプ**
+- ライト / ダーク / システム連動テーマ
+- アプリヘッダーには GitHub リンクを置かない。GitHub リリース履歴へのリンクはアプリ内のどこにも置かない
+- GitHub リポジトリへのリンクはヘルプページにのみ置く
+
+## アーキテクチャ
+
+```
+┌──────────── メインスレッド（UI） ────────────┐      ┌──────── Engine Worker（classic） ────────┐
+│ React + Zustand                              │      │ @litert-lm/core                          │
+│  pages/      チャット・モデル・設定・ヘルプ  │      │  Engine / Conversation                   │
+│  features/   chat, engine, models, settings  │ ⇄ ─ │  WebGPU（GPU Artisan）/ CPU              │
+│  lib/llm/client.ts ── Comlink ───────────────┼──────┤  OPFS へのモデル保存（並行書き込み）    │
+└──────────────────────────────────────────────┘      └──────────────────────────────────────────┘
+```
+
+- **推論は専用 Web Worker** で実行し、UI スレッドを常に空ける
+  - LiteRT-LM の Wasm ローダーは `importScripts()` を使うため **classic worker**（Vite `worker.format: 'iife'`）
+  - Worker 内では Emscripten の `locateFile` を明示して Wasm の URL を解決する
+- **GPU**: 既定は `GPU_ARTISAN` バックエンド（WebGPU・モデルをストリーミング読み込み）。`GPU` / `CPU` も選択可
+- **Wasm ランタイムはセルフホスト**: `@litert-lm/core/wasm/*` をビルド時に `dist/litertlm-wasm/` にコピー（バージョンが npm と常に一致）。
+  ブラウザの機能（JSPI / Relaxed SIMD）に応じて最適な Wasm をライブラリが自動選択する
+- **モデル保存**: 取り込み時に「エンジンへの読み込み」と「OPFS への保存」を同じ File から並行実行
+- **会話（KV キャッシュ）の再利用**: Worker は現在の Conversation が保持する履歴 ID と設定を記録し、
+  一致する場合は既存の Conversation に追記する。設定変更・中断・エラー時は履歴から作り直す
+- **描画の最適化**
+  - トークンは `requestAnimationFrame` 単位にまとめて状態に反映
+  - メッセージは `memo` 化し、生成中の 1 件だけを再描画
+  - Markdown は空行区切りのブロック単位でメモ化し、末尾ブロックだけ再パース
+  - `content-visibility: auto` で画面外のメッセージの描画を省略
+  - チャット以外のページと Markdown レンダラーは遅延読み込み（アイドル時に先読み）
+  - 会話の永続化は書き込みを間引く（デバウンス）
+
+### UI と推論エンジンの境界
+
+`src/lib/llm/types.ts` の型だけを UI が参照し、LiteRT-LM 固有の型は Worker に閉じ込める。
+将来ほかのランタイム（WebLLM / Transformers.js など）を比較したくなった場合も、この境界に沿って追加できる。
+
+## ディレクトリ構成
+
+```
+src/
+  app/          レイアウト・ナビゲーション・起動処理
+  pages/        ルート単位のページ
+  features/     機能単位（chat / engine / models / settings / help）
+  components/ui 汎用 UI 部品
+  lib/          llm（Worker・クライアント・型・OPFS）, env, utils
+build/          Vite プラグイン（Wasm セルフホスト）
+scripts/        ライセンス一覧の生成
+```
+
+## ライセンス管理
+
+- アプリ本体: MIT（`LICENSE`）
+- サードパーティ: `npm run licenses` が本番依存を再帰的に収集し
+  - `THIRD_PARTY_NOTICES.md`（リポジトリで管理。CI で最新か検証）
+  - `public/licenses.json`（ビルド時生成。ヘルプページでライセンス全文を表示）
+- ライセンス文を同梱していないパッケージ（`@litert-lm/core` など）は `scripts/license-texts/` の標準文を添付
+
+## ロードマップ
+
+### Phase 1: 基盤 + チャット（初期版）
+
+- [x] Vite + React + TypeScript + Tailwind CSS の土台、GitHub Pages 自動デプロイ、CI
+- [x] レスポンシブレイアウト（スマホ下部ナビ / PC サイドバー）
+- [x] LiteRT-LM を Web Worker で実行（WebGPU / CPU 切替）
+- [x] `.litertlm` ファイルの取り込み（ファイル選択・ドラッグ＆ドロップ）、OPFS 保存、起動時自動読み込み
+- [x] ストリーミングチャット（Markdown・コードハイライト・停止・コピー・統計表示・思考チャネル表示）
+- [x] クリアボタン
+- [x] 設定ページ（生成パラメーター・システムプロンプト・エンジン・保存・表示・データ管理）
+- [x] ヘルプページ（使い方・動作環境チェック・リポジトリリンク・クレジット/ライセンス全文）
+
+### Phase 2: チャットの充実
+
+- [ ] 会話履歴の複数保存（IndexedDB / Dexie）と切り替え
+- [ ] 応答の再生成・メッセージの編集
+- [ ] Hugging Face の URL を指定して直接ダウンロード（進捗表示・OPFS 保存）
+
+### Phase 3: 体験の磨き込み
+
+- [ ] PWA 化（アプリシェルと Wasm のキャッシュ、オフライン起動）
+- [ ] コードハイライトの言語を絞ってバンドルを軽量化
+- [ ] 画像・音声入力（マルチモーダル対応モデル向け）
+- [ ] 英語 UI（i18n）
