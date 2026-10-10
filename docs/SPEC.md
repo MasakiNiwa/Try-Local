@@ -36,7 +36,9 @@
 - **推論は専用 Web Worker** で実行し、UI スレッドを常に空ける
   - LiteRT-LM の Wasm ローダーは `importScripts()` を使うため **classic worker**（Vite `worker.format: 'iife'`）
   - Worker 内では Emscripten の `locateFile` を明示して Wasm の URL を解決する
-- **GPU**: 既定は `GPU_ARTISAN` バックエンド（WebGPU・モデルをストリーミング読み込み）。`GPU` / `CPU` も選択可
+- **GPU / CPU**: 既定は「自動」。WebGPU のアダプタが取れれば `GPU_ARTISAN`（モデルをストリーミング読み込み）、
+  取れなければ `CPU`（WebAssembly + XNNPack。モデル全体を Wasm メモリに読み込むため最大 4GB 制約あり）。
+  GPU 起因の読み込み失敗時は「CPU で再試行」を提示する。WebGL2 は LiteRT-LM が非対応のため使わない
 - **Wasm ランタイムはセルフホスト**: `@litert-lm/core/wasm/*` をビルド時に `dist/litertlm-wasm/` にコピー（バージョンが npm と常に一致）。
   ブラウザの機能（JSPI / Relaxed SIMD）に応じて最適な Wasm をライブラリが自動選択する
 - **モデル保存**: 取り込み時に「エンジンへの読み込み」と「OPFS への保存」を同じ File から並行実行

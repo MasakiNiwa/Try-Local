@@ -4,9 +4,12 @@ import type { BackendKind, ConversationSettings } from '@/lib/llm/types';
 
 export type ThemeSetting = 'system' | 'light' | 'dark';
 
+/** auto: WebGPU が使えれば GPU（Artisan）、使えなければ CPU */
+export type BackendSetting = 'auto' | BackendKind;
+
 export interface Settings extends ConversationSettings {
   // エンジン（変更後はモデルの再読み込みが必要）
-  backend: BackendKind;
+  backend: BackendSetting;
   maxNumTokens: number;
   // モデル管理
   saveImportedModels: boolean;
@@ -26,7 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
   maxOutputTokens: 2048,
   enableThinking: false,
 
-  backend: 'gpu-artisan',
+  backend: 'auto',
   maxNumTokens: 4096,
 
   saveImportedModels: true,
@@ -53,7 +56,13 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: 'try-local:settings',
-      version: 1,
+      version: 2,
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<Settings>;
+        // v1 の既定値（GPU 固定）は「自動」に移行する
+        if (version < 2 && state.backend === 'gpu-artisan') state.backend = 'auto';
+        return state as SettingsState;
+      },
       partialize: ({ update: _u, reset: _r, ...rest }) => rest,
     },
   ),

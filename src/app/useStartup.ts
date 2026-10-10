@@ -21,6 +21,7 @@ export function useStartup() {
   useEffect(() => {
     let cancelled = false;
     void useChat.getState().init();
+    void useEngine.getState().detectWebGpu();
     // 最初の応答表示で待たないよう、Markdown レンダラーを先読みしておく
     idle(() => void import('@/features/chat/markdown/Markdown'));
     (async () => {

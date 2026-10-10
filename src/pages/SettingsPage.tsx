@@ -10,12 +10,15 @@ import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { deleteAllStoredModels, isOpfsSupported } from '@/lib/llm/modelStorage';
-import type { BackendKind } from '@/lib/llm/types';
 import { errorMessage, formatBytes } from '@/lib/utils/format';
 import { useChat } from '@/features/chat/chatStore';
 import { useEngine } from '@/features/engine/engineStore';
-import { BACKEND_LABELS, THEME_LABELS } from '@/features/settings/labels';
-import { useSettings, type ThemeSetting } from '@/features/settings/settingsStore';
+import { BACKEND_SETTING_LABELS, THEME_LABELS } from '@/features/settings/labels';
+import {
+  useSettings,
+  type BackendSetting,
+  type ThemeSetting,
+} from '@/features/settings/settingsStore';
 
 const CONTEXT_OPTIONS = [1024, 2048, 4096, 8192, 16384, 32768].map((n) => ({
   value: String(n),
@@ -46,6 +49,7 @@ export default function SettingsPage() {
   const unload = useEngine((st) => st.unload);
   const refreshStored = useEngine((st) => st.refreshStoredModels);
   const storedCount = useEngine((st) => st.storedModels.length);
+  const webgpu = useEngine((st) => st.webgpu);
   const [confirm, setConfirm] = useState<null | 'models' | 'reset' | 'conversations'>(null);
 
   const deleteModels = async () => {
@@ -139,14 +143,22 @@ export default function SettingsPage() {
           icon={<Gauge />}
           description="変更後はモデルを読み込み直すと反映されます"
         >
-          <Field label="バックエンド" htmlFor="backend" hint="WebGPU が使えない環境では CPU を選択">
-            <Select<BackendKind>
+          <Field
+            label="バックエンド"
+            htmlFor="backend"
+            hint={
+              webgpu === false
+                ? 'この端末では WebGPU が使えないため、自動では CPU で実行します'
+                : '自動: WebGPU が使えれば GPU、使えなければ CPU'
+            }
+          >
+            <Select<BackendSetting>
               id="backend"
               value={s.backend}
               onChange={(v) => update({ backend: v })}
-              options={(Object.keys(BACKEND_LABELS) as BackendKind[]).map((k) => ({
+              options={(Object.keys(BACKEND_SETTING_LABELS) as BackendSetting[]).map((k) => ({
                 value: k,
-                label: BACKEND_LABELS[k],
+                label: BACKEND_SETTING_LABELS[k],
               }))}
               className="w-40 sm:w-48"
             />
