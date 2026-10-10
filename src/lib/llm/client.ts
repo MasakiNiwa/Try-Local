@@ -6,6 +6,10 @@ import * as Comlink from 'comlink';
 import type { EngineWorkerApi } from './engine.worker';
 import type {
   DownloadProgress,
+  EmbedInput,
+  EmbedResult,
+  EmbedderInfo,
+  LoadEmbedderRequest,
   GenerateEvent,
   GenerateRequest,
   GenerateResult,
@@ -66,6 +70,21 @@ export const llm = {
 
   cancelDownload(): void {
     void remote?.cancelDownload();
+  },
+
+  loadEmbedder(
+    req: LoadEmbedderRequest,
+    onProgress: (p: LoadProgress) => void,
+  ): Promise<EmbedderInfo> {
+    return getRemote().loadEmbedder(wasmBaseUrl(), req, Comlink.proxy(onProgress));
+  },
+
+  unloadEmbedder(): Promise<void> {
+    return remote ? remote.unloadEmbedder() : Promise.resolve();
+  },
+
+  embed(inputs: EmbedInput[], outputSize?: number): Promise<EmbedResult> {
+    return getRemote().embed(inputs, outputSize);
   },
 
   /**

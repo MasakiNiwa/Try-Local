@@ -6,19 +6,26 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { isOpfsSupported } from '@/lib/llm/modelStorage';
 import { cn } from '@/lib/utils/cn';
 import { useEngine } from '@/features/engine/engineStore';
-import { isBrowserCompatibleName } from '@/lib/llm/modelCatalog';
+import { isBrowserCompatibleName, type ModelKind } from '@/lib/llm/modelCatalog';
+import { useEmbed } from '@/features/embed/embedStore';
 import { useSettings } from '@/features/settings/settingsStore';
 
 const ACCEPT = '.litertlm';
 
 /** .litertlm ファイルの取り込み（ファイル選択 + ドラッグ＆ドロップ） */
-export function ModelImport({ compact }: { compact?: boolean }) {
+export function ModelImport({ compact, kind = 'chat' }: { compact?: boolean; kind?: ModelKind }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   /** Web 版でないファイルを選んだときの確認待ち */
   const [nonWebFile, setNonWebFile] = useState<File | null>(null);
-  const load = useEngine((s) => s.load);
-  const loading = useEngine((s) => s.status === 'loading');
+  const loadChat = useEngine((s) => s.load);
+  const loadEmbed = useEmbed((s) => s.load);
+  const isEmbedding = kind === 'embedding';
+  const load = (source: Parameters<typeof loadChat>[0]) =>
+    isEmbedding ? loadEmbed(source) : loadChat(source);
+  const chatLoading = useEngine((s) => s.status === 'loading');
+  const embedLoading = useEmbed((s) => s.status === 'loading');
+  const loading = isEmbedding ? embedLoading : chatLoading;
   const save = useSettings((s) => s.saveImportedModels) && isOpfsSupported();
 
   const handleFile = (file: File | undefined) => {
@@ -27,7 +34,7 @@ export function ModelImport({ compact }: { compact?: boolean }) {
       toast.error('.litertlm ファイルを選んでください', { description: file.name });
       return;
     }
-    if (!isBrowserCompatibleName(file.name)) {
+    if (!isEmbedding && !isBrowserCompatibleName(file.name)) {
       setNonWebFile(file);
       return;
     }
@@ -66,8 +73,14 @@ export function ModelImport({ compact }: { compact?: boolean }) {
           <span className="hidden md:inline">、またはここにドロップ</span>
         </p>
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          公式の Web 版（ファイル名が <code className="font-mono">-web.litertlm</code>{' '}
-          のもの）がおすすめです
+          {isEmbedding ? (
+            <>EmbeddingGemma 2 の汎用版（チップ名の付いていないファイル）を選んでください</>
+          ) : (
+            <>
+              公式の Web 版（ファイル名が <code className="font-mono">-web.litertlm</code>{' '}
+              のもの）がおすすめです
+            </>
+          )}
         </p>
       </div>
       <Button variant="primary" onClick={() => inputRef.current?.click()} disabled={loading}>

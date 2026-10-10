@@ -14,7 +14,8 @@ import type {
 import { errorMessage } from '@/lib/utils/format';
 import { useSettings } from '@/features/settings/settingsStore';
 import { resolveBackend } from './backend';
-import { findCatalogModel, isGpuOnlyModel } from '@/lib/llm/modelCatalog';
+import { findCatalogModel, isEmbeddingModelName, isGpuOnlyModel } from '@/lib/llm/modelCatalog';
+import { useEmbed } from '@/features/embed/embedStore';
 import { classifyLoadError, explainLoadError } from './loadErrors';
 
 export { resolveBackend } from './backend';
@@ -158,7 +159,8 @@ export const useEngine = create<EngineState>()((set, get) => ({
         loadingName: null,
       });
       // Wasm / GPU が壊れた状態の可能性があるので Worker を作り直す（ダウンロード中は除く）
-      if (!get().download) llm.terminate();
+      // 埋め込みモデルを読み込み中・使用中なら、同じ Worker を壊さないよう残す
+      if (!get().download && useEmbed.getState().status === 'empty') llm.terminate();
 
       const recordFallback = () =>
         set((st) => ({ fallbackLog: [...st.fallbackLog, { backend, message }] }));
@@ -218,8 +220,9 @@ export const useEngine = create<EngineState>()((set, get) => ({
       set({ download: null });
       await get().refreshStoredModels();
       toast.success(`${name} をダウンロードしました`);
-      // そのまま読み込む
-      if (get().status !== 'loading') void get().load({ kind: 'stored', name });
+      // そのまま読み込む（埋め込みモデルは画像ページのエンジンへ）
+      if (isEmbeddingModelName(name)) void useEmbed.getState().load({ kind: 'stored', name });
+      else if (get().status !== 'loading') void get().load({ kind: 'stored', name });
     } catch (e) {
       cancelAnimationFrame(raf);
       set({ download: null });

@@ -15,6 +15,8 @@ export interface Settings extends ConversationSettings {
   saveImportedModels: boolean;
   autoLoadLastModel: boolean;
   lastModelName: string | null;
+  /** 画像ページで前回使った埋め込みモデル（ページを開いたときに自動で読み込む） */
+  lastEmbedModelName: string | null;
   /** 自動設定時に、フォールバックで読み込めたバックエンドをモデルごとに覚えておく（次回から直接使う） */
   backendHints: Record<string, BackendKind>;
   // 表示・操作
@@ -37,6 +39,7 @@ export const DEFAULT_SETTINGS: Settings = {
   saveImportedModels: true,
   autoLoadLastModel: true,
   lastModelName: null,
+  lastEmbedModelName: null,
   backendHints: {},
 
   theme: 'system',
@@ -59,6 +62,7 @@ export const useSettings = create<SettingsState>()(
         set((s) => ({
           ...DEFAULT_SETTINGS,
           lastModelName: s.lastModelName,
+          lastEmbedModelName: s.lastEmbedModelName,
           backendHints: s.backendHints,
         })),
     }),

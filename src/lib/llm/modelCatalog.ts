@@ -6,7 +6,11 @@
  *
  * モデルファイル自体は本アプリに含まれない（ユーザーが Hugging Face から取得する）。
  */
+export type ModelKind = 'chat' | 'embedding';
+
 export interface CatalogModel {
+  /** chat: 文章生成（チャット）、embedding: 埋め込み（画像・テキストのベクトル化） */
+  kind: ModelKind;
   file: string;
   repo: string;
   title: string;
@@ -25,6 +29,7 @@ export interface CatalogModel {
 /** 表示順 = おすすめ順。公式 Web 版を優先し、Qwen3 は WebGPU が無い端末向けの代替 */
 export const MODEL_CATALOG: CatalogModel[] = [
   {
+    kind: 'chat',
     file: 'gemma-4-E2B-it-web.litertlm',
     repo: 'litert-community/gemma-4-E2B-it-litert-lm',
     title: 'Gemma 4 E2B',
@@ -36,6 +41,7 @@ export const MODEL_CATALOG: CatalogModel[] = [
     streamingLoad: true,
   },
   {
+    kind: 'chat',
     file: 'gemma-4-E4B-it-web.litertlm',
     repo: 'litert-community/gemma-4-E4B-it-litert-lm',
     title: 'Gemma 4 E4B',
@@ -47,6 +53,7 @@ export const MODEL_CATALOG: CatalogModel[] = [
     streamingLoad: true,
   },
   {
+    kind: 'chat',
     file: 'Qwen3-0.6B.litertlm',
     repo: 'litert-community/Qwen3-0.6B',
     title: 'Qwen3 0.6B',
@@ -56,6 +63,30 @@ export const MODEL_CATALOG: CatalogModel[] = [
     gpuOnly: false,
     official: false,
     streamingLoad: false,
+  },
+  {
+    kind: 'embedding',
+    file: 'embeddinggemma-2-text-vision-440m.litertlm',
+    repo: 'litert-community/embeddinggemma-2-text-vision-440m-litert-lm',
+    title: 'EmbeddingGemma 2（テキスト＋画像）',
+    note: 'おすすめ。画像の分類・検索に使う軽量な埋め込みモデル',
+    sizeLabel: '約 388 MB',
+    license: 'Apache-2.0',
+    gpuOnly: false,
+    official: true,
+    streamingLoad: true,
+  },
+  {
+    kind: 'embedding',
+    file: 'embeddinggemma-2-740m.litertlm',
+    repo: 'litert-community/embeddinggemma-2-740m-litert-lm',
+    title: 'EmbeddingGemma 2（全部入り）',
+    note: 'テキスト・画像に加えて音声も扱える版（このアプリでは画像まで対応）',
+    sizeLabel: '約 485 MB',
+    license: 'Apache-2.0',
+    gpuOnly: false,
+    official: true,
+    streamingLoad: true,
   },
 ];
 
@@ -91,4 +122,10 @@ export function isGpuOnlyModel(fileName: string): boolean {
     findCatalogModel(fileName)?.gpuOnly ??
     /^gemma-4-.*-web\.litertlm$/.test(normalizeName(fileName))
   );
+}
+
+/** 埋め込みモデルか（カタログにある、またはファイル名に embedding を含む） */
+export function isEmbeddingModelName(fileName: string): boolean {
+  const m = findCatalogModel(fileName);
+  return m ? m.kind === 'embedding' : /embedding/i.test(fileName);
 }

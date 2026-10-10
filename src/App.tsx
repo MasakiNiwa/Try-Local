@@ -9,6 +9,7 @@ import ChatPage from '@/pages/ChatPage';
 import { useSettings } from '@/features/settings/settingsStore';
 
 // チャット以外のページは必要になってから読み込む
+const ImagePage = lazy(() => import('@/pages/ImagePage'));
 const ModelsPage = lazy(() => import('@/pages/ModelsPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const HelpPage = lazy(() => import('@/pages/HelpPage'));
@@ -23,6 +24,7 @@ export default function App() {
       <AppLayout>
         <Suspense fallback={null}>
           <Switch>
+            <Route path="/image" component={ImagePage} />
             <Route path="/models" component={ModelsPage} />
             <Route path="/settings" component={SettingsPage} />
             <Route path="/help" component={HelpPage} />

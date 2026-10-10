@@ -96,3 +96,29 @@ export interface DownloadProgress {
   totalBytes: number;
   bytesPerSec: number;
 }
+
+// ---- 埋め込み（EmbeddingGemma 2 など） ----
+
+export type EmbedBackend = 'gpu' | 'cpu';
+
+export interface LoadEmbedderRequest {
+  source: ModelSource;
+  backend: EmbedBackend;
+}
+
+export interface EmbedderInfo {
+  name: string;
+  sizeBytes: number;
+  backend: EmbedBackend;
+  loadTimeMs: number;
+  saved: boolean;
+  saveError?: string;
+}
+
+export type EmbedInput = { type: 'text'; text: string } | { type: 'image'; blob: Blob };
+
+export interface EmbedResult {
+  /** 入力ごとのベクトル（正規化済み） */
+  vectors: Float32Array[];
+  totalMs: number;
+}

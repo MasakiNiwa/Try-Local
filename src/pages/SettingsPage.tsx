@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/Switch';
 import { deleteAllStoredModels, isOpfsSupported } from '@/lib/llm/modelStorage';
 import { errorMessage, formatBytes } from '@/lib/utils/format';
 import { useChat } from '@/features/chat/chatStore';
+import { useEmbed } from '@/features/embed/embedStore';
 import { useEngine } from '@/features/engine/engineStore';
 import { BACKEND_SETTING_LABELS, THEME_LABELS } from '@/features/settings/labels';
 import {
@@ -47,6 +48,7 @@ export default function SettingsPage() {
   const deleteAllConversations = useChat((st) => st.deleteAllConversations);
   const conversationCount = useChat((st) => st.conversations.length);
   const unload = useEngine((st) => st.unload);
+  const unloadEmbed = useEmbed((st) => st.unload);
   const refreshStored = useEngine((st) => st.refreshStoredModels);
   const storedCount = useEngine((st) => st.storedModels.length);
   const webgpu = useEngine((st) => st.webgpu);
@@ -55,8 +57,9 @@ export default function SettingsPage() {
   const deleteModels = async () => {
     try {
       await unload();
+      await unloadEmbed();
       await deleteAllStoredModels();
-      update({ lastModelName: null });
+      update({ lastModelName: null, lastEmbedModelName: null });
       toast.success('保存済みモデルをすべて削除しました');
     } catch (e) {
       toast.error('削除に失敗しました', { description: errorMessage(e) });
