@@ -128,7 +128,7 @@ export default function SettingsPage() {
           <Field
             label="思考モード"
             htmlFor="thinking"
-            hint="対応モデル（Gemma 4 など）で、回答前に推論過程を出力します"
+            hint="対応モデル（Gemma 4・Qwen3 など）で、回答前に推論過程を出力します。オフの方が速く答えます"
           >
             <Switch
               id="thinking"

@@ -80,6 +80,7 @@ function Stats({ message }: { message: ChatMessage }) {
   const s = message.stats;
   if (!s) return null;
   const parts: string[] = [];
+  if (s.backend) parts.push(s.backend === 'cpu' ? 'CPU' : 'GPU');
   if (s.decodeTokensPerSec) parts.push(`${s.decodeTokensPerSec.toFixed(1)} tok/s`);
   if (s.decodeTokens) parts.push(`${s.decodeTokens} tok`);
   if (s.ttftMs !== undefined) parts.push(`初回 ${formatDuration(s.ttftMs)}`);

@@ -16,6 +16,11 @@ function CurrentModel() {
   const status = useEngine((s) => s.status);
   const model = useEngine((s) => s.model);
   const error = useEngine((s) => s.error);
+  const fallbackLog = useEngine((s) => s.fallbackLog);
+  const load = useEngine((s) => s.load);
+  const backendHints = useSettings((s) => s.backendHints);
+  const updateSettings = useSettings((s) => s.update);
+  const storedModels = useEngine((s) => s.storedModels);
   const unload = useEngine((s) => s.unload);
   const backendSetting = useSettings((s) => s.backend);
   const webgpu = useEngine((s) => s.webgpu);
@@ -32,7 +37,10 @@ function CurrentModel() {
   }
   if (status !== 'ready' || !model) return null;
 
-  const needsReload = model.backend !== backend || model.maxNumTokens !== maxNumTokens;
+  const isStored = storedModels.some((m) => m.name === model.name);
+  // 自動フォールバックで別のバックエンドになった場合は「設定変更」とはみなさない
+  const needsReload =
+    (fallbackLog.length === 0 && model.backend !== backend) || model.maxNumTokens !== maxNumTokens;
   return (
     <Card className="p-4">
       <div className="flex items-start gap-3">
@@ -56,6 +64,37 @@ function CurrentModel() {
           解放
         </Button>
       </div>
+      {fallbackLog.length > 0 && (
+        <details className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+          <summary className="cursor-pointer font-medium">
+            {BACKEND_LABELS[model.backend]} で実行中（ほかの方法では読み込めませんでした）
+          </summary>
+          <ul className="mt-2 space-y-1.5">
+            {fallbackLog.map((f, i) => (
+              <li key={i} className="break-all">
+                <span className="font-medium">{BACKEND_LABELS[f.backend]}:</span> {f.message}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {model.backend === 'cpu' && webgpu && backendHints[model.name] && isStored && (
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+          <span>前回 GPU で読み込めなかったため、このモデルは CPU で読み込んでいます</span>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              const rest = { ...backendHints };
+              delete rest[model.name];
+              updateSettings({ backendHints: rest });
+              void load({ kind: 'stored', name: model.name }, 'gpu-artisan');
+            }}
+          >
+            GPU で再試行
+          </Button>
+        </div>
+      )}
       {needsReload && (
         <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
           エンジン設定が変更されています。反映するにはモデルを読み込み直してください。

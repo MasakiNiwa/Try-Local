@@ -5,6 +5,7 @@ import type { ChatTurn } from '@/lib/llm/types';
 import { errorMessage } from '@/lib/utils/format';
 import { createId } from '@/lib/utils/id';
 import { getConversationSettings, useSettings } from '@/features/settings/settingsStore';
+import { splitThinking } from './thinking';
 import { makeTitle } from './title';
 import type { ChatMessage, Conversation, ConversationSummary } from './types';
 
@@ -103,15 +104,19 @@ export const useChat = create<ChatState>()((set, get) => {
     const channelBuf: Record<string, string> = {};
     let dirty = false;
     let raf = 0;
+    /** 本文に埋め込まれた <think> を思考チャネルに移した表示用の値 */
+    const view = () => {
+      const { answer, thought } = splitThinking(textBuf);
+      const channels = { ...channelBuf };
+      if (thought)
+        channels.thought = channels.thought ? `${channels.thought}\n${thought}` : thought;
+      return { text: answer, channels: Object.keys(channels).length ? channels : undefined };
+    };
     const flush = () => {
       raf = 0;
       if (!dirty) return;
       dirty = false;
-      patchAssistant({
-        text: textBuf,
-        channels: Object.keys(channelBuf).length ? { ...channelBuf } : undefined,
-        status: 'streaming',
-      });
+      patchAssistant({ ...view(), status: 'streaming' });
     };
 
     try {
@@ -138,7 +143,7 @@ export const useChat = create<ChatState>()((set, get) => {
       cancelAnimationFrame(raf);
       const message = errorMessage(e);
       console.error(e);
-      patchAssistant({ text: textBuf, status: 'error', error: message });
+      patchAssistant({ ...view(), status: 'error', error: message });
       toast.error('生成中にエラーが発生しました', { description: message });
     } finally {
       set({ isGenerating: false });

@@ -21,6 +21,7 @@ import {
 import * as Comlink from 'comlink';
 import { fileNameFromUrl, normalizeModelUrl } from './download';
 import { getStoredModelFile, saveModelFile, saveModelStream } from './modelStorage';
+import { userMessageSuffix } from './modelQuirks';
 import type {
   BackendKind,
   ChatTurn,
@@ -103,16 +104,22 @@ function settingsKey(s: ConversationSettings): string {
   return JSON.stringify(s);
 }
 
-function turnToMessage(turn: ChatTurn): Message {
-  return { role: turn.role, content: [{ type: 'text', text: turn.text }] };
+/** suffix: ユーザー発話の末尾に付ける制御文字列（モデルごとの癖への対応） */
+function turnToMessage(turn: ChatTurn, suffix = ''): Message {
+  const text = turn.role === 'user' ? turn.text + suffix : turn.text;
+  return { role: turn.role, content: [{ type: 'text', text }] };
 }
 
-function buildConversationConfig(s: ConversationSettings, history: ChatTurn[]): ConversationConfig {
+function buildConversationConfig(
+  s: ConversationSettings,
+  history: ChatTurn[],
+  suffix: string,
+): ConversationConfig {
   const messages: Message[] = [];
   if (s.systemPrompt.trim()) {
     messages.push({ role: 'system', content: [{ type: 'text', text: s.systemPrompt }] });
   }
-  messages.push(...history.map(turnToMessage));
+  messages.push(...history.map((t) => turnToMessage(t, suffix)));
   const greedy = s.temperature <= 0;
   return {
     sessionConfig: {
@@ -289,6 +296,7 @@ const api = {
     cancelRequested = false;
     const started = performance.now();
 
+    const suffix = userMessageSuffix(modelInfo?.name, req.settings.enableThinking);
     // 履歴と設定が一致していれば既存の Conversation（KV キャッシュ）をそのまま使う
     const key = settingsKey(req.settings);
     const historyIds = req.history.map((t) => t.id);
@@ -300,7 +308,7 @@ const api = {
     ) {
       await disposeConversation();
       conversation = await engine.createConversation(
-        buildConversationConfig(req.settings, req.history),
+        buildConversationConfig(req.settings, req.history, suffix),
       );
       conversationSettingsKey = key;
       conversationTurnIds = historyIds;
@@ -313,7 +321,7 @@ const api = {
 
     let ttftMs: number | undefined;
     try {
-      const stream = conv.sendMessageStreaming(turnToMessage(req.message));
+      const stream = conv.sendMessageStreaming(turnToMessage(req.message, suffix));
       for await (const chunk of stream) {
         if (cancelRequested) break;
         if (ttftMs === undefined) {
@@ -335,7 +343,11 @@ const api = {
       }
     }
 
-    const stats: GenerationStats = { totalMs: performance.now() - started, ttftMs };
+    const stats: GenerationStats = {
+      totalMs: performance.now() - started,
+      ttftMs,
+      backend: modelInfo?.backend,
+    };
     if (cancelRequested) {
       // 中断した会話は次回送信時に履歴から作り直す
       await disposeConversation();
