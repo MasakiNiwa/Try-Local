@@ -45,7 +45,7 @@ export function WebGpuNotice({ className }: { className?: string }) {
         <p className="opacity-90">
           {gpuForced
             ? '設定のバックエンドが GPU になっているため読み込みに失敗します。「自動」か「CPU」に変更してください。'
-            : 'GPU より遅く、モデル全体をメモリに読み込むため空きメモリが必要です。'}{' '}
+            : 'Gemma 4 の Web 版は WebGPU 専用のため使えません。CPU でも動く Qwen3 0.6B（「モデル」画面からダウンロード可）を使ってください。'}{' '}
           <Link href="/help" className="underline underline-offset-2">
             WebGPU を有効にする方法
           </Link>

@@ -14,6 +14,7 @@ import type {
 import { errorMessage } from '@/lib/utils/format';
 import { useSettings } from '@/features/settings/settingsStore';
 import { resolveBackend } from './backend';
+import { isGpuOnlyModel } from '@/lib/llm/modelCatalog';
 import { classifyLoadError, explainLoadError } from './loadErrors';
 
 export { resolveBackend } from './backend';
@@ -36,7 +37,7 @@ interface EngineState {
   refreshStoredModels: () => Promise<void>;
   detectWebGpu: () => Promise<boolean>;
   /** backend を指定すると設定より優先する */
-  load: (source: ModelSource, backend?: BackendKind) => Promise<boolean>;
+  load: (source: ModelSource, backend?: BackendKind, isFallback?: boolean) => Promise<boolean>;
   unload: () => Promise<void>;
   downloadModel: (url: string) => Promise<void>;
   cancelDownload: () => void;
@@ -66,12 +67,21 @@ export const useEngine = create<EngineState>()((set, get) => ({
     }
   },
 
-  async load(source, backendOverride) {
+  async load(source, backendOverride, isFallback = false) {
     if (get().status === 'loading') return false;
     const settings = useSettings.getState();
     const name = source.kind === 'file' ? source.file.name : source.name;
     const webgpu = get().webgpu ?? (await get().detectWebGpu());
     const backend = backendOverride ?? resolveBackend(settings.backend, webgpu);
+    const gpuOnly = isGpuOnlyModel(name);
+
+    // WebGPU 専用モデルを CPU で読み込んでも必ず失敗するので、読み込む前に止める
+    if (gpuOnly && backend === 'cpu') {
+      const hint = explainLoadError('gpu-only', name) ?? '';
+      set({ status: 'error', error: hint, progress: null, loadingName: null, model: null });
+      toast.error('このモデルは CPU では動きません', { description: hint, duration: 15000 });
+      return false;
+    }
     set({ status: 'loading', loadingName: name, error: null, progress: null, model: null });
     // 進捗通知は高頻度で届くので 1 フレームに 1 回だけ反映する
     let pending: LoadProgress | null = null;
@@ -123,11 +133,17 @@ export const useEngine = create<EngineState>()((set, get) => ({
             description: 'モデル全体をメモリに読み込むため、時間とメモリが多めに必要です',
           },
         );
-        return get().load(source, 'gpu');
+        return get().load(source, 'gpu', true);
+      }
+      // 通常の GPU 読み込みでも失敗したら、CPU で自動的に再試行する（メモリ不足は CPU でも同じなので除く）
+      if (isFallback && backend === 'gpu' && !gpuOnly && kind !== 'memory') {
+        toast.info('GPU で読み込めなかったため、CPU で再試行します');
+        return get().load(source, 'cpu', true);
       }
 
       // GPU が原因なら CPU での再試行を提案する（取り込んだファイルはそのまま再利用できる）
-      const offerCpu = backend !== 'cpu' && (kind === 'webgpu' || kind === 'streaming-unsupported');
+      const offerCpu =
+        backend !== 'cpu' && !gpuOnly && (kind === 'webgpu' || kind === 'streaming-unsupported');
       toast.error('モデルの読み込みに失敗しました', {
         description: hint ? `${message}\n${hint}` : message,
         duration: offerCpu ? 15000 : undefined,

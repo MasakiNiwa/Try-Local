@@ -5,9 +5,96 @@ import { Card, Section } from '@/components/ui/Card';
 import { Progress } from '@/components/ui/Progress';
 import { fileNameFromUrl } from '@/lib/llm/download';
 import { isOpfsSupported } from '@/lib/llm/modelStorage';
+import { cn } from '@/lib/utils/cn';
 import { formatBytes, formatPercent } from '@/lib/utils/format';
 import { useEngine } from '@/features/engine/engineStore';
-import { downloadUrl, RECOMMENDED_MODELS } from './recommendedModels';
+import {
+  downloadUrl,
+  huggingFacePageUrl,
+  MODEL_CATALOG,
+  type CatalogModel,
+} from '@/lib/llm/modelCatalog';
+
+function Badge({ children, tone }: { children: string; tone: 'ok' | 'warn' | 'muted' }) {
+  return (
+    <span
+      className={cn(
+        'rounded-md px-1.5 py-0.5 text-[0.7rem] font-medium',
+        tone === 'ok' &&
+          'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+        tone === 'warn' && 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+        tone === 'muted' && 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function CatalogRow({
+  model,
+  stored,
+  disabled,
+  webgpu,
+  onDownload,
+}: {
+  model: CatalogModel;
+  stored: boolean;
+  disabled: boolean;
+  webgpu: boolean | null;
+  onDownload: () => void;
+}) {
+  const unusable = model.gpuOnly && webgpu === false;
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 sm:px-5">
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <span className="text-sm font-semibold">{model.title}</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">{model.sizeLabel}</span>
+        </div>
+        <div
+          className="truncate font-mono text-xs text-slate-500 dark:text-slate-400"
+          title={model.file}
+        >
+          {model.file}
+        </div>
+        <p className="text-xs text-slate-600 dark:text-slate-400">{model.note}</p>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge tone={model.gpuOnly ? (unusable ? 'warn' : 'muted') : 'ok'}>
+            {model.gpuOnly ? 'WebGPU 専用' : 'GPU / CPU 両対応'}
+          </Badge>
+          <Badge tone="muted">
+            {model.official ? '公式サポート' : '公式サポート外・動作報告あり'}
+          </Badge>
+          <Badge tone="muted">{model.license}</Badge>
+          <a
+            href={huggingFacePageUrl(model)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-0.5 text-xs text-accent-700 hover:underline dark:text-accent-300"
+          >
+            Hugging Face
+            <ExternalLink className="size-3" />
+          </a>
+        </div>
+        {unusable && (
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            この端末では WebGPU が使えないため動きません
+          </p>
+        )}
+      </div>
+      <Button
+        size="sm"
+        variant={stored || unusable ? 'secondary' : 'primary'}
+        disabled={disabled || stored}
+        onClick={onDownload}
+      >
+        <Download />
+        {stored ? '保存済み' : 'ダウンロード'}
+      </Button>
+    </div>
+  );
+}
 
 function DownloadProgressCard() {
   const download = useEngine((s) => s.download);
@@ -45,6 +132,7 @@ function DownloadProgressCard() {
 export function ModelDownload() {
   const downloading = useEngine((s) => s.download !== null);
   const downloadModel = useEngine((s) => s.downloadModel);
+  const webgpu = useEngine((s) => s.webgpu);
   const storedModels = useEngine((s) => s.storedModels);
   const storedNames = useMemo(() => new Set(storedModels.map((m) => m.name)), [storedModels]);
   const [url, setUrl] = useState('');
@@ -57,42 +145,21 @@ export function ModelDownload() {
       icon={<Download />}
       description={
         opfs
-          ? 'Hugging Face から直接ダウンロードしてブラウザ内に保存します（数 GB あるので Wi-Fi 推奨）'
+          ? 'Hugging Face から直接ダウンロードしてブラウザ内に保存します（サイズが大きいので Wi-Fi 推奨）'
           : 'このブラウザは OPFS に対応していないため、直接ダウンロードは使えません。ファイルを取り込んでください。'
       }
     >
       <DownloadProgressCard />
-      {RECOMMENDED_MODELS.map((m) => {
-        const stored = storedNames.has(m.file);
-        return (
-          <div key={m.file} className="flex items-center gap-3 px-4 py-3 sm:px-5">
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium">{m.file}</div>
-              <div className="flex flex-wrap items-center gap-x-2 text-xs text-slate-500 dark:text-slate-400">
-                {m.note}
-                <a
-                  href={m.pageUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-0.5 text-accent-700 hover:underline dark:text-accent-300"
-                >
-                  Hugging Face
-                  <ExternalLink className="size-3" />
-                </a>
-              </div>
-            </div>
-            <Button
-              size="sm"
-              variant={stored ? 'secondary' : 'primary'}
-              disabled={!opfs || downloading || stored}
-              onClick={() => void downloadModel(downloadUrl(m))}
-            >
-              <Download />
-              {stored ? '保存済み' : 'ダウンロード'}
-            </Button>
-          </div>
-        );
-      })}
+      {MODEL_CATALOG.map((m) => (
+        <CatalogRow
+          key={m.file}
+          model={m}
+          stored={storedNames.has(m.file)}
+          disabled={!opfs || downloading}
+          webgpu={webgpu}
+          onDownload={() => void downloadModel(downloadUrl(m))}
+        />
+      ))}
       <form
         className="space-y-2 px-4 py-3.5 sm:px-5"
         onSubmit={(e) => {
