@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { llm } from '@/lib/llm/client';
-import { listStoredModels } from '@/lib/llm/modelStorage';
+import { listStoredModels, subscribeSharedModels } from '@/lib/llm/modelStorage';
 import { useChat } from '@/features/chat/chatStore';
 import { useEngine } from '@/features/engine/engineStore';
 import { useSettings } from '@/features/settings/settingsStore';
@@ -41,6 +41,20 @@ export function useStartup() {
     })();
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  // 同じ github.io の他のサイト・タブでモデルが保存・削除されたら一覧を更新する
+  useEffect(() => {
+    const refresh = () => void useEngine.getState().refreshStoredModels();
+    const unsubscribe = subscribeSharedModels(refresh);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      unsubscribe();
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
 }

@@ -284,7 +284,7 @@ export default function SettingsPage() {
       <ConfirmDialog
         open={confirm === 'models'}
         title="保存済みモデルをすべて削除しますか？"
-        description="ブラウザ内（OPFS）に保存したすべてのモデルファイルを削除します。"
+        description="ブラウザ内（OPFS）に保存したすべてのモデルファイルを削除します。モデルは同じ github.io の他のサイトと共有しているため、他のサイトからも使えなくなります。"
         confirmLabel="すべて削除"
         danger
         onConfirm={() => void deleteModels()}
