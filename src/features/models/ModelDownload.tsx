@@ -130,7 +130,12 @@ function DownloadProgressCard() {
 }
 
 /** Hugging Face などの URL からモデルを直接ダウンロードして OPFS に保存する */
-export function ModelDownload({ kind = 'chat' }: { kind?: ModelKind }) {
+const GROUP_LABEL: Record<ModelKind, string> = {
+  chat: 'チャット用モデル',
+  embedding: '画像・埋め込みモデル（画像ページで使用）',
+};
+
+export function ModelDownload({ kind = 'chat' }: { kind?: ModelKind | 'all' }) {
   const downloading = useEngine((s) => s.download !== null);
   const downloadModel = useEngine((s) => s.downloadModel);
   const webgpu = useEngine((s) => s.webgpu);
@@ -153,15 +158,24 @@ export function ModelDownload({ kind = 'chat' }: { kind?: ModelKind }) {
       }
     >
       <DownloadProgressCard />
-      {MODEL_CATALOG.filter((m) => m.kind === kind).map((m) => (
-        <CatalogRow
-          key={m.file}
-          model={m}
-          stored={storedNames.has(m.file)}
-          disabled={!opfs || downloading}
-          webgpu={webgpu}
-          onDownload={() => void downloadModel(downloadUrl(m))}
-        />
+      {(kind === 'all' ? (['chat', 'embedding'] as const) : [kind]).map((group) => (
+        <div key={group} className="divide-y divide-slate-100 dark:divide-slate-800">
+          {kind === 'all' && (
+            <h3 className="bg-slate-50 px-4 py-1.5 text-xs font-medium text-slate-500 sm:px-5 dark:bg-slate-800/40 dark:text-slate-400">
+              {GROUP_LABEL[group]}
+            </h3>
+          )}
+          {MODEL_CATALOG.filter((m) => m.kind === group).map((m) => (
+            <CatalogRow
+              key={m.file}
+              model={m}
+              stored={storedNames.has(m.file)}
+              disabled={!opfs || downloading}
+              webgpu={webgpu}
+              onDownload={() => void downloadModel(downloadUrl(m))}
+            />
+          ))}
+        </div>
       ))}
       <form
         className="space-y-2 px-4 py-3.5 sm:px-5"
