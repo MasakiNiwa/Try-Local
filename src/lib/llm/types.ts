@@ -87,6 +87,10 @@ export interface StoredModel {
   name: string;
   sizeBytes: number;
   lastModified: number;
+  /** 保存したアプリ名（共通モデル保存領域のメタデータ。無い場合は不明） */
+  savedBy?: string;
+  /** 入手元 URL（ダウンロードした場合） */
+  source?: string;
 }
 
 export interface DownloadProgress {

@@ -216,10 +216,10 @@ const api = {
       const total = Number(res.headers.get('content-length')) || 0;
       let lastReport = 0;
       const started = performance.now();
-      await saveModelStream(
-        name,
-        res.body,
-        (loaded) => {
+      await saveModelStream(name, res.body, {
+        source: url,
+        signal: abort.signal,
+        onProgress: (loaded) => {
           const now = performance.now();
           if (now - lastReport < 100 && loaded !== total) return;
           lastReport = now;
@@ -231,8 +231,7 @@ const api = {
             bytesPerSec: elapsed > 0 ? loaded / elapsed : 0,
           });
         },
-        abort.signal,
-      );
+      });
       return name;
     } finally {
       downloadAbort = null;
