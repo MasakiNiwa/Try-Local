@@ -5,6 +5,8 @@ import { Card } from '@/components/ui/Card';
 import { formatBytes, formatDuration } from '@/lib/utils/format';
 import { resolveBackend, useEngine } from '@/features/engine/engineStore';
 import { WebGpuNotice } from '@/features/engine/WebGpuNotice';
+import { EmbedModelCard } from '@/features/embed/EmbedModelCard';
+import { useEmbed } from '@/features/embed/embedStore';
 import { LoadProgressCard } from '@/features/models/LoadProgressCard';
 import { ModelImport } from '@/features/models/ModelImport';
 import { ModelDownload } from '@/features/models/ModelDownload';
@@ -106,6 +108,7 @@ function CurrentModel() {
 
 export default function ModelsPage() {
   const loading = useEngine((s) => s.status === 'loading');
+  const embedLoading = useEmbed((s) => s.status === 'loading');
   return (
     <>
       <PageHeader title="モデル" />
@@ -113,9 +116,10 @@ export default function ModelsPage() {
         <WebGpuNotice />
         <CurrentModel />
         <LoadProgressCard />
-        <StoredModelList />
-        {!loading && <ModelImport />}
-        <ModelDownload />
+        <EmbedModelCard />
+        <StoredModelList kind="all" />
+        {!loading && !embedLoading && <ModelImport kind="auto" />}
+        <ModelDownload kind="all" />
       </PageBody>
     </>
   );

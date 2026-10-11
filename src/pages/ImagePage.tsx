@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Info } from 'lucide-react';
+import { Boxes, Info } from 'lucide-react';
+import { Link } from 'wouter';
+import { Card } from '@/components/ui/Card';
+import { isEmbeddingModelName } from '@/lib/llm/modelCatalog';
 import { PageBody, PageHeader } from '@/app/PageHeader';
 import { cn } from '@/lib/utils/cn';
 import { ClassifyPanel } from '@/features/embed/ClassifyPanel';
@@ -7,8 +10,6 @@ import { EmbedModelCard } from '@/features/embed/EmbedModelCard';
 import { useEmbed } from '@/features/embed/embedStore';
 import { SearchPanel } from '@/features/embed/SearchPanel';
 import { useEngine } from '@/features/engine/engineStore';
-import { ModelDownload } from '@/features/models/ModelDownload';
-import { ModelImport } from '@/features/models/ModelImport';
 import { StoredModelList } from '@/features/models/StoredModelList';
 import { useSettings } from '@/features/settings/settingsStore';
 
@@ -19,14 +20,26 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'search', label: '検索' },
 ];
 
-/** 埋め込みモデルの準備（保存済み・ダウンロード・取り込み） */
+/** 埋め込みモデルの準備（保存済みモデルの読み込み。入手・管理はモデル画面） */
 function EmbedSetup() {
-  const loading = useEmbed((s) => s.status === 'loading');
+  const hasStored = useEngine((s) => s.storedModels.some((m) => isEmbeddingModelName(m.name)));
   return (
     <>
       <StoredModelList kind="embedding" />
-      <ModelDownload kind="embedding" />
-      {!loading && <ModelImport kind="embedding" compact />}
+      <Card className="flex items-center gap-3 p-4 text-sm">
+        <p className="min-w-0 flex-1 text-slate-600 dark:text-slate-400">
+          {hasStored
+            ? 'ほかのモデルの入手・削除はモデル画面で行えます。'
+            : '画像を扱うには EmbeddingGemma 2（約 388MB）が必要です。モデル画面から入手してください。'}
+        </p>
+        <Link
+          href="/models"
+          className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-accent-600 px-3 py-2 font-medium text-white hover:bg-accent-700"
+        >
+          <Boxes className="size-4" />
+          モデル画面へ
+        </Link>
+      </Card>
     </>
   );
 }
@@ -36,11 +49,13 @@ export default function ImagePage() {
   const load = useEmbed((s) => s.load);
   const storedModels = useEngine((s) => s.storedModels);
   const lastEmbedModelName = useSettings((s) => s.lastEmbedModelName);
+  const autoLoad = useSettings((s) => s.autoLoadLastModel);
   const [tab, setTab] = useState<Tab>('classify');
 
-  // 前回使った埋め込みモデルがあれば、ページを開いたときに読み込む
+  // 設定で自動読み込みがオンなら、前回の埋め込みモデルをページを開いたときに読み込む
   useEffect(() => {
     if (
+      autoLoad &&
       status === 'empty' &&
       lastEmbedModelName &&
       storedModels.some((m) => m.name === lastEmbedModelName)

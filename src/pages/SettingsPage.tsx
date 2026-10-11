@@ -199,9 +199,9 @@ export default function SettingsPage() {
             />
           </Field>
           <Field
-            label="起動時に前回のモデルを自動で読み込む"
+            label="前回のモデルを自動で読み込む"
             htmlFor="auto-load"
-            hint="保存済みモデルのみが対象です"
+            hint="チャット用は起動時、画像用は画像ページを開いたときに読み込みます（保存済みモデルのみ）"
           >
             <Switch
               id="auto-load"

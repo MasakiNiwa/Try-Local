@@ -3,25 +3,27 @@ import { HardDrive, Play, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { deleteStoredModel } from '@/lib/llm/modelStorage';
-import { cn } from '@/lib/utils/cn';
-import { errorMessage, formatBytes } from '@/lib/utils/format';
-import { useEngine } from '@/features/engine/engineStore';
 import {
   isBrowserCompatibleName,
   isEmbeddingModelName,
   type ModelKind,
 } from '@/lib/llm/modelCatalog';
+import { deleteStoredModel } from '@/lib/llm/modelStorage';
+import { cn } from '@/lib/utils/cn';
+import { errorMessage, formatBytes } from '@/lib/utils/format';
 import { useEmbed } from '@/features/embed/embedStore';
+import { useEngine } from '@/features/engine/engineStore';
 import { useSettings } from '@/features/settings/settingsStore';
 
 interface StoredModelListProps {
   compact?: boolean;
-  /** chat: チャット用モデル、embedding: 埋め込みモデル（画像ページ） */
-  kind?: ModelKind;
+  /** 表示するモデルの種類。all ならチャット用と埋め込み用を並べて表示する */
+  kind?: ModelKind | 'all';
 }
 
-/** OPFS に保存済みのモデル一覧（種類ごとに表示し、それぞれのエンジンで読み込む） */
+const KIND_LABEL: Record<ModelKind, string> = { chat: 'チャット', embedding: '画像・埋め込み' };
+
+/** OPFS に保存済みのモデル一覧（種類に応じたエンジンで読み込む） */
 export function StoredModelList({ compact, kind = 'chat' }: StoredModelListProps) {
   const allModels = useEngine((s) => s.storedModels);
   const refresh = useEngine((s) => s.refreshStoredModels);
@@ -34,15 +36,8 @@ export function StoredModelList({ compact, kind = 'chat' }: StoredModelListProps
   const embedCurrent = useEmbed((s) => s.info?.name);
   const loadEmbed = useEmbed((s) => s.load);
   const unloadEmbed = useEmbed((s) => s.unload);
-  const isEmbedding = kind === 'embedding';
-  const models = allModels.filter((m) => isEmbeddingModelName(m.name) === isEmbedding);
-  const status = isEmbedding ? embedStatus : chatStatus;
-  const current = isEmbedding ? embedCurrent : chatCurrent;
-  const load = (name: string) =>
-    isEmbedding ? loadEmbed({ kind: 'stored', name }) : loadChat({ kind: 'stored', name });
-  const unload = isEmbedding ? unloadEmbed : unloadChat;
-  const lastKey = isEmbedding ? 'lastEmbedModelName' : 'lastModelName';
-  const lastModelName = useSettings((s) => s[lastKey]);
+  const lastModelName = useSettings((s) => s.lastModelName);
+  const lastEmbedModelName = useSettings((s) => s.lastEmbedModelName);
   const updateSettings = useSettings((s) => s.update);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -50,13 +45,30 @@ export function StoredModelList({ compact, kind = 'chat' }: StoredModelListProps
     void refresh();
   }, [refresh]);
 
+  const kindOf = (name: string): ModelKind => (isEmbeddingModelName(name) ? 'embedding' : 'chat');
+  const models = allModels
+    .filter((m) => kind === 'all' || kindOf(m.name) === kind)
+    // all のときはチャット用 → 埋め込み用の順に並べる
+    .sort((a, b) => (kindOf(a.name) === kindOf(b.name) ? 0 : kindOf(a.name) === 'chat' ? -1 : 1));
   if (models.length === 0) return null;
+
+  const engineOf = (name: string) =>
+    kindOf(name) === 'embedding'
+      ? { status: embedStatus, current: embedCurrent, unload: unloadEmbed }
+      : { status: chatStatus, current: chatCurrent, unload: unloadChat };
+
+  const load = (name: string) =>
+    kindOf(name) === 'embedding'
+      ? loadEmbed({ kind: 'stored', name })
+      : loadChat({ kind: 'stored', name });
 
   const remove = async (name: string) => {
     try {
-      if (current === name) await unload();
+      const engine = engineOf(name);
+      if (engine.current === name) await engine.unload();
       await deleteStoredModel(name);
-      if (lastModelName === name) updateSettings({ [lastKey]: null });
+      if (lastModelName === name) updateSettings({ lastModelName: null });
+      if (lastEmbedModelName === name) updateSettings({ lastEmbedModelName: null });
       toast.success(`${name} を削除しました`);
     } catch (e) {
       toast.error('削除に失敗しました', { description: errorMessage(e) });
@@ -73,6 +85,8 @@ export function StoredModelList({ compact, kind = 'chat' }: StoredModelListProps
       )}
       <ul className="space-y-2">
         {models.map((m) => {
+          const modelKind = kindOf(m.name);
+          const { status, current } = engineOf(m.name);
           const active = current === m.name && status === 'ready';
           return (
             <li
@@ -89,13 +103,23 @@ export function StoredModelList({ compact, kind = 'chat' }: StoredModelListProps
                 <div className="truncate text-sm font-medium" title={m.name}>
                   {m.name}
                 </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  {formatBytes(m.sizeBytes)}
-                  {active && (
-                    <span className="ml-2 text-accent-600 dark:text-accent-400">使用中</span>
+                <div className="flex flex-wrap items-center gap-x-2 text-xs text-slate-500 dark:text-slate-400">
+                  {kind === 'all' && (
+                    <span
+                      className={cn(
+                        'rounded px-1.5 py-px text-[0.68rem] font-medium',
+                        modelKind === 'embedding'
+                          ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+                          : 'bg-accent-100 text-accent-800 dark:bg-accent-900/40 dark:text-accent-200',
+                      )}
+                    >
+                      {KIND_LABEL[modelKind]}
+                    </span>
                   )}
-                  {!isEmbedding && !isBrowserCompatibleName(m.name) && (
-                    <span className="ml-2 text-amber-600 dark:text-amber-400">
+                  <span>{formatBytes(m.sizeBytes)}</span>
+                  {active && <span className="text-accent-600 dark:text-accent-400">使用中</span>}
+                  {modelKind === 'chat' && !isBrowserCompatibleName(m.name) && (
+                    <span className="text-amber-600 dark:text-amber-400">
                       ブラウザ未対応の可能性
                     </span>
                   )}

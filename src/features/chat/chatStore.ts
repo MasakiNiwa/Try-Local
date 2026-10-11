@@ -174,16 +174,8 @@ export const useChat = create<ChatState>()((set, get) => {
         try {
           const repo = await loadRepo();
           await repo.migrateLegacyChat();
-          const conversations = await repo.listConversations();
-          set({ conversations });
-          const latest = conversations[0] && (await repo.getConversation(conversations[0].id));
-          if (latest && get().messages.length === 0) {
-            set({
-              conversationId: latest.id,
-              createdAt: latest.createdAt,
-              messages: latest.messages,
-            });
-          }
+          // 起動時は新しい会話で始める（過去の会話は履歴から開ける）
+          set({ conversations: await repo.listConversations() });
         } catch (e) {
           console.warn('会話履歴を読み込めませんでした', e);
         }

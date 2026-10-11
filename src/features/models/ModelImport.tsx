@@ -6,14 +6,24 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { isOpfsSupported } from '@/lib/llm/modelStorage';
 import { cn } from '@/lib/utils/cn';
 import { useEngine } from '@/features/engine/engineStore';
-import { isBrowserCompatibleName, type ModelKind } from '@/lib/llm/modelCatalog';
+import {
+  isBrowserCompatibleName,
+  isEmbeddingModelName,
+  type ModelKind,
+} from '@/lib/llm/modelCatalog';
 import { useEmbed } from '@/features/embed/embedStore';
 import { useSettings } from '@/features/settings/settingsStore';
 
 const ACCEPT = '.litertlm';
 
 /** .litertlm ファイルの取り込み（ファイル選択 + ドラッグ＆ドロップ） */
-export function ModelImport({ compact, kind = 'chat' }: { compact?: boolean; kind?: ModelKind }) {
+interface ModelImportProps {
+  compact?: boolean;
+  /** auto: ファイル名から判定（埋め込みモデルは画像用エンジン、それ以外はチャット用） */
+  kind?: ModelKind | 'auto';
+}
+
+export function ModelImport({ compact, kind = 'chat' }: ModelImportProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   /** Web 版でないファイルを選んだときの確認待ち */
@@ -21,11 +31,16 @@ export function ModelImport({ compact, kind = 'chat' }: { compact?: boolean; kin
   const loadChat = useEngine((s) => s.load);
   const loadEmbed = useEmbed((s) => s.load);
   const isEmbedding = kind === 'embedding';
-  const load = (source: Parameters<typeof loadChat>[0]) =>
-    isEmbedding ? loadEmbed(source) : loadChat(source);
+  const isEmbeddingFile = (name: string) =>
+    kind === 'auto' ? isEmbeddingModelName(name) : isEmbedding;
+  const load = (source: Parameters<typeof loadChat>[0]) => {
+    const name = source.kind === 'file' ? source.file.name : source.name;
+    return isEmbeddingFile(name) ? loadEmbed(source) : loadChat(source);
+  };
   const chatLoading = useEngine((s) => s.status === 'loading');
   const embedLoading = useEmbed((s) => s.status === 'loading');
-  const loading = isEmbedding ? embedLoading : chatLoading;
+  const loading =
+    kind === 'auto' ? chatLoading || embedLoading : isEmbedding ? embedLoading : chatLoading;
   const save = useSettings((s) => s.saveImportedModels) && isOpfsSupported();
 
   const handleFile = (file: File | undefined) => {
@@ -34,7 +49,7 @@ export function ModelImport({ compact, kind = 'chat' }: { compact?: boolean; kin
       toast.error('.litertlm ファイルを選んでください', { description: file.name });
       return;
     }
-    if (!isEmbedding && !isBrowserCompatibleName(file.name)) {
+    if (!isEmbeddingFile(file.name) && !isBrowserCompatibleName(file.name)) {
       setNonWebFile(file);
       return;
     }
@@ -75,6 +90,11 @@ export function ModelImport({ compact, kind = 'chat' }: { compact?: boolean; kin
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
           {isEmbedding ? (
             <>EmbeddingGemma 2 の汎用版（チップ名の付いていないファイル）を選んでください</>
+          ) : kind === 'auto' ? (
+            <>
+              チャット用は公式の Web 版（<code className="font-mono">-web.litertlm</code>
+              ）、画像用は EmbeddingGemma 2 がおすすめです
+            </>
           ) : (
             <>
               公式の Web 版（ファイル名が <code className="font-mono">-web.litertlm</code>{' '}
